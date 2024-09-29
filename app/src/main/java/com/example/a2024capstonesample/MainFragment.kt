@@ -31,12 +31,12 @@ class MainFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         // 솔루션 버튼 클릭 이벤트 처리
-        binding.btnHealthSolution.setOnClickListener {
+        binding.btnSolution.setOnClickListener {
             findNavController().navigate(R.id.action_MainFragment_to_SolutionFragment)
         }
 
         // 솔루션 버튼 클릭 이벤트 처리
-        binding.btnDetail.setOnClickListener {
+        binding.btnDetails.setOnClickListener {
             findNavController().navigate(R.id.action_MainFragment_to_DetailFragment)
         }
     }

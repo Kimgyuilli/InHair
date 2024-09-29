@@ -3,20 +3,10 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/FirstFragment">
+    app:startDestination="@id/MainFragment">
 
     <fragment
-        android:id="@+id/FirstFragment"
-        android:name="com.example.a2024capstonesample.LoginFragment"
-        android:label="@string/login_fragment_label"
-        tools:layout="@layout/fragment_login">
-
-        <action
-            android:id="@+id/action_LoginFragment_to_MainFragment"
-            app:destination="@id/SecondFragment" />
-    </fragment>
-    <fragment
-        android:id="@+id/SecondFragment"
+        android:id="@+id/MainFragment"
         android:name="com.example.a2024capstonesample.MainFragment"
         android:label="@string/main_fragment_label"
         tools:layout="@layout/fragment_main">
@@ -26,9 +16,6 @@
             android:id="@+id/action_MainFragment_to_SolutionFragment"
             app:destination="@id/SolutionFragment" />
 
-        <action
-            android:id="@+id/action_MainFragment_to_LoginFragment"
-            app:destination="@id/FirstFragment" />
         <action
             android:id="@+id/action_MainFragment_to_DetailFragment"
             app:destination="@id/DetailFragment" />

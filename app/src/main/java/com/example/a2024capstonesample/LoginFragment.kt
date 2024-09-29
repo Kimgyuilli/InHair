@@ -1,3 +1,4 @@
+/* 로그인 화면 현재 사용 x
 package com.example.a2024capstonesample
 
 import android.os.Bundle
@@ -9,9 +10,11 @@ import android.widget.Button
 import androidx.navigation.fragment.findNavController
 import com.example.a2024capstonesample.databinding.FragmentLoginBinding
 
+*/
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
- */
+ *//*
+
 class LoginFragment : Fragment() {
 
     override fun onCreateView(
@@ -28,4 +31,4 @@ class LoginFragment : Fragment() {
 
         return view
     }
-}
+}*/
