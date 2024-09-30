@@ -102,11 +102,16 @@ class MainFragment : Fragment() {
         val sharedPreferences = requireActivity().getSharedPreferences("app_preferences", Activity.MODE_PRIVATE)
         val hasShownPermissionMessage = sharedPreferences.getBoolean("hasShownPermissionMessage", false)
 
-        // 권한이 이미 허용되었고 메시지를 보여주지 않은 경우에만 메시지를 표시
+        // Android 10 이상에서는 WRITE_EXTERNAL_STORAGE 권한이 필요하지 않음
+        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            arrayOf(Manifest.permission.CAMERA) // 카메라 권한만 요청
+        } else {
+            arrayOf(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE) // 카메라 및 저장소 권한 요청
+        }
+
         if (!hasShownPermissionMessage) {
             val permissionListener = object : PermissionListener {
                 override fun onPermissionGranted() {
-                    // 권한이 허용된 경우
                     Toast.makeText(requireContext(), "Permission Granted", Toast.LENGTH_SHORT).show()
 
                     // 메시지를 보여주었다고 저장
@@ -114,15 +119,15 @@ class MainFragment : Fragment() {
                 }
 
                 override fun onPermissionDenied(deniedPermissions: List<String?>) {
-                    // 권한이 거부된 경우
                     Toast.makeText(requireContext(), "Permission Denied: $deniedPermissions", Toast.LENGTH_SHORT).show()
                 }
             }
 
             TedPermission.create()
                 .setPermissionListener(permissionListener)
-                .setPermissions(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE) // 요청할 권한 설정
-                .check() // 권한 요청 실행
+                .setDeniedMessage("권한을 거부하시면 서비스를 이용하실 수 없습니다.\n\n권한을 허가해주세요. [설정] > [권한]")
+                .setPermissions(*permissions) // 요청할 권한 설정
+                .check()
         }
     }
 
