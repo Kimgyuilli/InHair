@@ -1,20 +1,26 @@
 package com.example.a2024capstonesample
 
+
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.ContentValues
 import android.content.Intent
+import android.content.res.AssetFileDescriptor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
+import android.graphics.Matrix
+import android.hardware.Camera
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
-import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.SurfaceHolder
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
@@ -28,13 +34,26 @@ import androidx.navigation.fragment.findNavController
 import com.example.a2024capstonesample.databinding.FragmentMainBinding
 import com.gun0912.tedpermission.PermissionListener
 import com.gun0912.tedpermission.normal.TedPermission
+import org.tensorflow.lite.Interpreter
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.channels.FileChannel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+
 class MainFragment : Fragment() {
+    private val mCameraID = 0 // 사용할 카메라의 ID
+    private val mHolder: SurfaceHolder? = null // 서페이스뷰의 홀더
+    private val mCamera: Camera? = null // 카메라 객체
+    private val mCameraInfo: Camera.CameraInfo? = null // 카메라 정보
+    private var isCameraReady = false // 카메라 준비 상태
+
     private lateinit var curPhotoPath: String // 사진 경로 저장 변수
     private lateinit var ivProfile: ImageView // 프로필 이미지를 보여줄 ImageView
     private val galleryRequestCode = 2 // 갤러리 요청 코드
@@ -135,15 +154,25 @@ class MainFragment : Fragment() {
     private val startForResult =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
             if (result.resultCode == Activity.RESULT_OK) { // 결과가 성공적인 경우
-                val bitmap = getCapturedImage() // 촬영한 이미지 가져오기
-                bitmap?.let {
-                    ivProfile.setImageBitmap(it) // 이미지 뷰에 설정
-                    savePhoto(it) // 사진 저장
+                val file = File(curPhotoPath) // 촬영한 이미지 파일
+                if (file.exists()) {
+                    val bitmap = BitmapFactory.decodeFile(file.absolutePath) // 파일에서 비트맵 가져오기
+                    bitmap?.let {
+                        ivProfile.setImageBitmap(it) // 이미지 뷰에 설정
+                        savePhoto(it) // 사진 저장
+                        onPictureTaken(convertBitmapToByteArray(it)) // 전처리를 위해 onPictureTaken에 전달
+                    }
                 }
             }
         }
+    // 비트맵을 byteArray로 변환하는 메서드
+    private fun convertBitmapToByteArray(bitmap: Bitmap): ByteArray {
+        val stream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream)
+        return stream.toByteArray()
+    }
 
-    // 이미지 처리 함수
+/*    // 이미지 처리 함수
     private fun getCapturedImage(): Bitmap? {
         val file = File(curPhotoPath) // 촬영된 이미지 파일
         return try {
@@ -165,7 +194,7 @@ class MainFragment : Fragment() {
             Toast.makeText(requireContext(), "사진을 불러오는 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show() // 오류 메시지 표시
             null
         }
-    }
+    }*/
 
     // 카메라 실행
     @SuppressLint("QueryPermissionsNeeded")
@@ -187,6 +216,137 @@ class MainFragment : Fragment() {
             Toast.makeText(requireContext(), "카메라를 실행할 수 없습니다: ${ex.message}", Toast.LENGTH_SHORT).show() // 오류 메시지 표시
         }
     }
+
+    // 이미지 리사이징을 위한 유틸리티 메서드
+    // maxSize를 기준으로 비트맵의 크기를 조정하되 비율은 유지
+    fun resizeBitmap(getBitmap: Bitmap, maxSize: Int): Bitmap {
+        var width = getBitmap.width
+        var height = getBitmap.height
+        val x: Double
+
+        // 가로가 더 크면 가로를 maxSize에 맞춤
+        if (width >= height && width > maxSize) {
+            x = (width / height).toDouble()
+            width = maxSize
+            height = (maxSize / x).toInt()
+        } else if (height >= width && height > maxSize) {
+            x = (height / width).toDouble()
+            height = maxSize
+            width = (maxSize / x).toInt()
+        }
+        // 스케일된 비트맵을 반환
+        return Bitmap.createScaledBitmap(getBitmap, width, height, false)
+    }
+
+    // 이미지 픽셀 데이터를 TensorFlow Lite 입력 형식으로 변환
+    // RGB 값을 0~1 사이의 float으로 정규화하여 ByteBuffer에 저장
+    private fun getInputImage_2(pixels: IntArray, cx: Int, cy: Int): ByteBuffer {
+        // 크기에 맞게 ByteBuffer를 생성
+        val input_img = ByteBuffer.allocateDirect(cx * cy * 3 * 4)
+        input_img.order(ByteOrder.nativeOrder())
+
+        // 픽셀 데이터를 각각 R, G, B로 분해하여 정규화 후 ByteBuffer에 넣음
+        for (i in 0 until cx * cy) {
+            val pixel = pixels[i] // ARGB 형식의 픽셀 값
+
+            // RGB 각 채널을 추출하여 정규화 후 저장
+            input_img.putFloat(((pixel shr 16) and 0xff) / 255f) // Red
+            input_img.putFloat(((pixel shr 8) and 0xff) / 255f) // Green
+            input_img.putFloat(((pixel shr 0) and 0xff) / 255f) // Blue
+        }
+
+        return input_img
+    }
+
+    private fun onPictureTaken(data: ByteArray) {
+        // 이미지 크기 설정
+        val imageSize = 500
+
+        // byte array를 bitmap으로 변환
+        val options = BitmapFactory.Options()
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888
+        val bitmapOriginal = BitmapFactory.decodeByteArray(data, 0, data.size, options)
+        Log.d("CameraApp", "비트맵으로 변환 완료")
+
+        // 이미지를 디바이스 방향으로 회전할 경우 사용 가능 (회전 매트릭스)
+        val matrix = Matrix()
+
+        // 원본 비트맵에서 특정 부분 잘라내기 (원하는 경우)
+        val width = bitmapOriginal.width
+        val height = bitmapOriginal.height
+        val croppedBitmap = Bitmap.createBitmap(
+            bitmapOriginal,
+            width / 6,
+            height / 6,
+            (width / 6) * 4,
+            (height / 6) * 4,
+            matrix,
+            true
+        )
+        Log.d("CameraApp", "비트맵 크기 조정 완료")
+
+        // TensorFlow Lite 모델에 사용할 이미지를 스케일 조정 (imageSize로 설정)
+        var bitmapForTensorFlow = Bitmap.createScaledBitmap(croppedBitmap, imageSize, imageSize, false)
+        bitmapForTensorFlow = resizeBitmap(bitmapForTensorFlow, imageSize)
+        Log.d("CameraApp", "TensorFlow용 비트맵 스케일 완료")
+
+        // 비트맵 이미지를 TensorFlow Lite로 입력하기 위해 처리
+        val pixels = IntArray(imageSize * imageSize)
+        bitmapForTensorFlow.getPixels(pixels, 0, imageSize, 0, 0, imageSize, imageSize)
+        Log.d("CameraApp", "비트맵 픽셀 데이터 가져오기 완료")
+
+        // TensorFlow Lite 입력 형식으로 변환
+        val input_img: ByteBuffer = getInputImage_2(pixels, imageSize, imageSize)
+        Log.d("CameraApp", "입력 이미지 데이터 생성 완료")
+
+        // TFLite 인터프리터 실행
+        val tfLiteInterpreter = getTfliteInterpreter("scalp_classification_model_J_20_500_0.tflite")
+        val prediction = Array(1) { FloatArray(3) }
+
+        Log.d("CameraApp", "TensorFlow Lite 모델 실행 중...")
+        tfLiteInterpreter!!.run(input_img, prediction)
+        Log.d("CameraApp", "모델 예측 완료")
+
+        // 예측 결과 출력
+        val resultMessage = when {
+            prediction[0][0] > prediction[0][1] && prediction[0][0] > prediction[0][2] ->
+                String.format("두피 건강 상태: 클래스 0 (확률: %6.2f%%)", prediction[0][0])
+            prediction[0][1] > prediction[0][0] && prediction[0][1] > prediction[0][2] ->
+                String.format("두피 건강 상태: 클래스 1 (확률: %6.2f%%)", prediction[0][1])
+            else ->
+                String.format("두피 건강 상태: 클래스 2 (확률: %6.2f%%)", prediction[0][2])
+        }
+
+        // 예측 결과를 AlertDialog로 표시
+        AlertDialog.Builder(requireContext())
+            .setTitle("두피 건강 예측 결과")
+            .setMessage(resultMessage)
+            .setPositiveButton("확인", null)
+            .show()
+
+        Log.d("CameraApp", "예측 결과 표시 완료")
+    }
+
+    private fun getTfliteInterpreter(modelPath: String): Interpreter? {
+        try {
+            Log.d("CameraApp", "TensorFlow Lite 모델 불러오기: $modelPath")
+
+            // requireContext()로 컨텍스트 가져오기
+            val fileDescriptor: AssetFileDescriptor = requireContext().assets.openFd(modelPath)
+            val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
+            val fileChannel = inputStream.channel
+            val startOffset = fileDescriptor.startOffset
+            val declaredLength = fileDescriptor.declaredLength
+            val model = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+
+            Log.d("CameraApp", "TensorFlow Lite 모델 로드 완료")
+            return Interpreter(model)
+        } catch (e: IOException) {
+            Log.e("CameraApp", "모델 파일을 불러오는 중 오류 발생: " + e.message)
+            return null
+        }
+    }
+
 
     // 갤러리 열기
     private fun openGallery() {
