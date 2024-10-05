@@ -102,7 +102,10 @@ class MainFragment : Fragment() {
             if (result.resultCode == Activity.RESULT_OK) { // 결과가 성공적인 경우
                 result.data?.data?.let { uri ->
                     val bitmap = loadImageFromUri(uri) // 선택한 이미지 로드
-                    bitmap?.let { ivProfile.setImageBitmap(it) } // 이미지 뷰에 설정
+                    bitmap?.let {
+                        ivProfile.setImageBitmap(it) // 이미지 뷰에 설정
+                        onPictureTaken(convertBitmapToByteArray(it)) // 전처리를 위해 onPictureTaken에 전달
+                    } // 이미지 뷰에 설정
                 }
             }
         }
@@ -302,24 +305,17 @@ class MainFragment : Fragment() {
         Log.d("CameraApp", "입력 이미지 데이터 생성 완료")
 
         // TFLite 인터프리터 실행
-        val tfLiteInterpreter = getTfliteInterpreter("scalp_classification_model_J_20_500_0.tflite") //이전 모델
-/*        val tfLiteInterpreter = getTfliteInterpreter("scalp_classification_model_J_20_500_GB_0.tflite") //최신 모델*/
-      val prediction = Array(1) { FloatArray(3) } //이전 모델 쓸 때
-/*        val prediction = Array(1) { FloatArray(5) } //최신 모델 쓸 때*/
+/*        val tfLiteInterpreter = getTfliteInterpreter("scalp_classification_model_J_20_500_0.tflite") //이전 모델*/
+        val tfLiteInterpreter = getTfliteInterpreter("scalp_classification_model_J_20_500_GB_0.tflite") //최신 모델
+/*      val prediction = Array(1) { FloatArray(3) } //이전 모델 쓸 때*/
+        val prediction = Array(1) { FloatArray(2) } //최신 모델 쓸 때
 
         Log.d("CameraApp", "TensorFlow Lite 모델 실행 중...")
         tfLiteInterpreter!!.run(input_img, prediction)
         Log.d("CameraApp", "모델 예측 완료")
 
         // 예측 결과 출력
-        val resultMessage = when {
-            prediction[0][0] > prediction[0][1] && prediction[0][0] > prediction[0][2] ->
-                String.format("두피 건강 상태: 클래스 0 (확률: %6.2f%%)", prediction[0][0])
-            prediction[0][1] > prediction[0][0] && prediction[0][1] > prediction[0][2] ->
-                String.format("두피 건강 상태: 클래스 1 (확률: %6.2f%%)", prediction[0][1])
-            else ->
-                String.format("두피 건강 상태: 클래스 2 (확률: %6.2f%%)", prediction[0][2])
-        }
+        val resultMessage = String.format("두피 건강 상태:\n 양호 확률: %6.2f%%\n주의 확률: %6.2f%%", 100 * prediction[0][0], 100 * prediction[0][1])
 
         // 예측 결과를 AlertDialog로 표시
         AlertDialog.Builder(requireContext())
