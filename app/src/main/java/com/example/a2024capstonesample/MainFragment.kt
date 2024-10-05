@@ -151,6 +151,7 @@ class MainFragment : Fragment() {
     }
 
     // 카메라 촬영 결과 처리
+// 카메라 촬영 결과 처리
     private val startForResult =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
             if (result.resultCode == Activity.RESULT_OK) { // 결과가 성공적인 경우
@@ -172,29 +173,29 @@ class MainFragment : Fragment() {
         return stream.toByteArray()
     }
 
-/*    // 이미지 처리 함수
-    private fun getCapturedImage(): Bitmap? {
-        val file = File(curPhotoPath) // 촬영된 이미지 파일
-        return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) { // API 28 이상
-                val source = ImageDecoder.createSource(requireActivity().contentResolver, Uri.fromFile(file))
-                val bitmap = ImageDecoder.decodeBitmap(source) // 비트맵 디코드
-                // 비트맵 크기 조정
-                Bitmap.createScaledBitmap(bitmap, 500, 500, true) // 500x500 크기로 조정
-            } else { // API 28 미만
-                val uri = Uri.fromFile(file)
-                requireActivity().contentResolver.openInputStream(uri)?.use { inputStream ->
-                    val bitmap = BitmapFactory.decodeStream(inputStream) // 비트맵 디코드
+    /*    // 이미지 처리 함수
+        private fun getCapturedImage(): Bitmap? {
+            val file = File(curPhotoPath) // 촬영된 이미지 파일
+            return try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) { // API 28 이상
+                    val source = ImageDecoder.createSource(requireActivity().contentResolver, Uri.fromFile(file))
+                    val bitmap = ImageDecoder.decodeBitmap(source) // 비트맵 디코드
                     // 비트맵 크기 조정
                     Bitmap.createScaledBitmap(bitmap, 500, 500, true) // 500x500 크기로 조정
+                } else { // API 28 미만
+                    val uri = Uri.fromFile(file)
+                    requireActivity().contentResolver.openInputStream(uri)?.use { inputStream ->
+                        val bitmap = BitmapFactory.decodeStream(inputStream) // 비트맵 디코드
+                        // 비트맵 크기 조정
+                        Bitmap.createScaledBitmap(bitmap, 500, 500, true) // 500x500 크기로 조정
+                    }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(requireContext(), "사진을 불러오는 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show() // 오류 메시지 표시
+                null
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(requireContext(), "사진을 불러오는 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show() // 오류 메시지 표시
-            null
-        }
-    }*/
+        }*/
 
     // 카메라 실행
     @SuppressLint("QueryPermissionsNeeded")
@@ -258,6 +259,7 @@ class MainFragment : Fragment() {
         return input_img
     }
 
+    // onPictureTaken 메서드: 여기서 전처리 수행
     private fun onPictureTaken(data: ByteArray) {
         // 이미지 크기 설정
         val imageSize = 500
@@ -300,8 +302,10 @@ class MainFragment : Fragment() {
         Log.d("CameraApp", "입력 이미지 데이터 생성 완료")
 
         // TFLite 인터프리터 실행
-        val tfLiteInterpreter = getTfliteInterpreter("scalp_classification_model_J_20_500_0.tflite")
-        val prediction = Array(1) { FloatArray(3) }
+        val tfLiteInterpreter = getTfliteInterpreter("scalp_classification_model_J_20_500_0.tflite") //이전 모델
+/*        val tfLiteInterpreter = getTfliteInterpreter("scalp_classification_model_J_20_500_GB_0.tflite") //최신 모델*/
+      val prediction = Array(1) { FloatArray(3) } //이전 모델 쓸 때
+/*        val prediction = Array(1) { FloatArray(5) } //최신 모델 쓸 때*/
 
         Log.d("CameraApp", "TensorFlow Lite 모델 실행 중...")
         tfLiteInterpreter!!.run(input_img, prediction)
@@ -346,7 +350,6 @@ class MainFragment : Fragment() {
             return null
         }
     }
-
 
     // 갤러리 열기
     private fun openGallery() {
