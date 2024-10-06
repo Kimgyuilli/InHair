@@ -103,6 +103,7 @@ class MainFragment : Fragment() {
                 result.data?.data?.let { uri ->
                     val bitmap = loadImageFromUri(uri) // 선택한 이미지 로드
                     bitmap?.let {
+                        ivProfile.setImageBitmap(null)
                         ivProfile.setImageBitmap(it) // 이미지 뷰에 설정
                         onPictureTaken(convertBitmapToByteArray(it)) // 전처리를 위해 onPictureTaken에 전달
                     } // 이미지 뷰에 설정
@@ -162,6 +163,7 @@ class MainFragment : Fragment() {
                 if (file.exists()) {
                     val bitmap = BitmapFactory.decodeFile(file.absolutePath) // 파일에서 비트맵 가져오기
                     bitmap?.let {
+                        ivProfile.setImageBitmap(null)
                         ivProfile.setImageBitmap(it) // 이미지 뷰에 설정
                         savePhoto(it) // 사진 저장
                         onPictureTaken(convertBitmapToByteArray(it)) // 전처리를 위해 onPictureTaken에 전달
