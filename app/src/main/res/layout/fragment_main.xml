@@ -138,6 +138,14 @@
                     android:textSize="18sp"
                     android:text="건강 솔루션"
                     android:layout_margin="10dp" />
+                <!-- surFace 테스트용 -->
+<!--                <Button
+                    android:id="@+id/btn_SurFace"
+                    android:layout_width="165dp"
+                    android:layout_height="70dp"
+                    android:textSize="18sp"
+                    android:text="카메라테스트"
+                    android:layout_margin="10dp" />-->
             </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>
     </LinearLayout>

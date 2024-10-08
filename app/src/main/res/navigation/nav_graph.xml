@@ -19,11 +19,21 @@
         <action
             android:id="@+id/action_MainFragment_to_DetailFragment"
             app:destination="@id/DetailFragment" />
+        <action
+            android:id="@+id/action_MainFragment_to_CamSfFragment"
+            app:destination="@id/CamSfFragment" />
     </fragment>
     <fragment
         android:id="@+id/SolutionFragment"
         android:name="com.example.a2024capstonesample.SolutionFragment"
         android:label="@string/solution_fragment_label"
+        tools:layout="@layout/fragment_main">
+
+    </fragment>
+    <fragment
+        android:id="@+id/CamSfFragment"
+        android:name="com.example.a2024capstonesample.CamSfFragment"
+        android:label="@string/camerasurface_fragment_label"
         tools:layout="@layout/fragment_main">
 
     </fragment>

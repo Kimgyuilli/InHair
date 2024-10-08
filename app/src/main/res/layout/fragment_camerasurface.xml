@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layout_main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <SurfaceView
+        android:id="@+id/camera_preview_main"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <com.example.a2024capstonesample.GuideFrameView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <android.widget.Button
+        android:id="@+id/button_main_capture"
+        android:backgroundTint="@null"
+        android:background="@drawable/capture_button_background"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_gravity="center_horizontal|bottom"
+        android:layout_marginBottom="30dp"
+        android:text="" />
+
+    <ImageView
+        android:layout_width="90dp"
+        android:layout_height="90dp"
+        android:layout_gravity="center_horizontal|bottom"
+        android:layout_marginBottom="25dp"
+        android:src="@drawable/button_ring" />
+
+</FrameLayout>

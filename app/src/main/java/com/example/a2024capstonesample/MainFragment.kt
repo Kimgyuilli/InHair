@@ -48,19 +48,14 @@ import java.util.Locale
 
 
 class MainFragment : Fragment() {
-    private val mCameraID = 0 // 사용할 카메라의 ID
-    private val mHolder: SurfaceHolder? = null // 서페이스뷰의 홀더
-    private val mCamera: Camera? = null // 카메라 객체
-    private val mCameraInfo: Camera.CameraInfo? = null // 카메라 정보
-    private var isCameraReady = false // 카메라 준비 상태
 
     private lateinit var curPhotoPath: String // 사진 경로 저장 변수
     private lateinit var ivProfile: ImageView // 프로필 이미지를 보여줄 ImageView
-    private val galleryRequestCode = 2 // 갤러리 요청 코드
     private lateinit var galleryActivityResultLauncher: ActivityResultLauncher<Intent> // 갤러리 결과를 처리할 런처
 
     private var _binding: FragmentMainBinding? = null // View Binding을 위한 변수
     private val binding get() = _binding!! // Binding 초기화
+
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -76,6 +71,17 @@ class MainFragment : Fragment() {
         // 이미지 뷰 초기화
         ivProfile = binding.chart // XML에서 ImageView 연결
 
+        // 카메라 결과 리스너 설정
+        parentFragmentManager.setFragmentResultListener("camera_result", viewLifecycleOwner) { _, bundle ->
+            val photoData = bundle.getByteArray("photo_data")
+            photoData?.let {
+                onPictureTaken(it)
+                val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
+                ivProfile.setImageBitmap(bitmap)
+                savePhoto(bitmap)
+            }
+        }
+
         // 솔루션 버튼 클릭 이벤트 처리
         binding.btnSolution.setOnClickListener {
             findNavController().navigate(R.id.action_MainFragment_to_SolutionFragment) // 솔루션 Fragment로 이동
@@ -85,12 +91,17 @@ class MainFragment : Fragment() {
         binding.btnDetails.setOnClickListener {
             findNavController().navigate(R.id.action_MainFragment_to_DetailFragment) // 상세 기록 Fragment로 이동
         }
-
-        // 카메라 버튼 클릭 리스너
+        // 카메라 버튼 클릭 이벤트 처리
         binding.btnCamera.setOnClickListener {
+            Log.d("CameraDebug", "btnSurFace")
+            findNavController().navigate(R.id.action_MainFragment_to_CamSfFragment) // 카메라 테스트 Fragment로 이동
+        }
+
+/*        // 기존 카메라 버튼 클릭 리스너 (카메라 객체 사용 x)
+        binding.btnSurFace.setOnClickListener {
             Log.d("CameraDebug", "takeCapture") // 디버그 로그
             takeCapture() // 카메라 촬영 함수 호출
-        }
+        }*/
 
         // 갤러리 버튼 클릭 리스너
         binding.btnCall.setOnClickListener { openGallery() } // 갤러리 열기 함수 호출
@@ -114,6 +125,7 @@ class MainFragment : Fragment() {
         // 권한 요청
         requestPermissions() // 권한 요청 함수 호출
     }
+
 
     override fun onDestroyView() {
         super.onDestroyView()
@@ -154,8 +166,7 @@ class MainFragment : Fragment() {
         }
     }
 
-    // 카메라 촬영 결과 처리
-// 카메라 촬영 결과 처리
+/*// 카메라 촬영 결과 처리(takeCapture())
     private val startForResult =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
             if (result.resultCode == Activity.RESULT_OK) { // 결과가 성공적인 경우
@@ -170,7 +181,7 @@ class MainFragment : Fragment() {
                     }
                 }
             }
-        }
+        }*/
     // 비트맵을 byteArray로 변환하는 메서드
     private fun convertBitmapToByteArray(bitmap: Bitmap): ByteArray {
         val stream = ByteArrayOutputStream()
@@ -178,33 +189,10 @@ class MainFragment : Fragment() {
         return stream.toByteArray()
     }
 
-    /*    // 이미지 처리 함수
-        private fun getCapturedImage(): Bitmap? {
-            val file = File(curPhotoPath) // 촬영된 이미지 파일
-            return try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) { // API 28 이상
-                    val source = ImageDecoder.createSource(requireActivity().contentResolver, Uri.fromFile(file))
-                    val bitmap = ImageDecoder.decodeBitmap(source) // 비트맵 디코드
-                    // 비트맵 크기 조정
-                    Bitmap.createScaledBitmap(bitmap, 500, 500, true) // 500x500 크기로 조정
-                } else { // API 28 미만
-                    val uri = Uri.fromFile(file)
-                    requireActivity().contentResolver.openInputStream(uri)?.use { inputStream ->
-                        val bitmap = BitmapFactory.decodeStream(inputStream) // 비트맵 디코드
-                        // 비트맵 크기 조정
-                        Bitmap.createScaledBitmap(bitmap, 500, 500, true) // 500x500 크기로 조정
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Toast.makeText(requireContext(), "사진을 불러오는 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show() // 오류 메시지 표시
-                null
-            }
-        }*/
 
-    // 카메라 실행
+/*    // 카메라 실행 카메라 객체 사용 x
     @SuppressLint("QueryPermissionsNeeded")
-    private fun takeCapture() {
+    public fun takeCapture() {
         val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE) // 카메라 인텐트 생성
         try {
             val photoFile: File? = createImageFile() // 이미지 파일 생성
@@ -221,7 +209,7 @@ class MainFragment : Fragment() {
             Log.e("CameraDebug", "Error creating image file", ex)
             Toast.makeText(requireContext(), "카메라를 실행할 수 없습니다: ${ex.message}", Toast.LENGTH_SHORT).show() // 오류 메시지 표시
         }
-    }
+    }*/
 
     // 이미지 리사이징을 위한 유틸리티 메서드
     // maxSize를 기준으로 비트맵의 크기를 조정하되 비율은 유지
@@ -266,9 +254,37 @@ class MainFragment : Fragment() {
 
     // onPictureTaken 메서드: 여기서 전처리 수행
     private fun onPictureTaken(data: ByteArray) {
+
+       /* 프레임에 맞춘 전처리*/
         // 이미지 크기 설정
         val imageSize = 500
 
+        // byte array를 bitmap으로 변환
+        val options = BitmapFactory.Options()
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888
+        val bitmapOriginal = BitmapFactory.decodeByteArray(data, 0, data.size, options)
+        Log.d("CameraApp", "비트맵으로 변환 완료")
+
+        // 비트맵의 크기와 중앙 위치 계산
+        val width = bitmapOriginal.width
+        val height = bitmapOriginal.height
+
+        // 프레임의 중앙 위치와 크기 설정
+        val frameSize = 500
+        val left = (width - frameSize) / 2
+        val top = (height - frameSize) / 2
+
+        // 원본 비트맵에서 프레임에 맞춰 잘라내기
+        val croppedBitmap = Bitmap.createBitmap(
+            bitmapOriginal,
+            left,
+            top,
+            frameSize,
+            frameSize
+        )
+
+        //기존 전처리
+/*      val imageSize = 500
         // byte array를 bitmap으로 변환
         val options = BitmapFactory.Options()
         options.inPreferredConfig = Bitmap.Config.ARGB_8888
@@ -289,7 +305,7 @@ class MainFragment : Fragment() {
             (height / 6) * 4,
             matrix,
             true
-        )
+        )*/
         Log.d("CameraApp", "비트맵 크기 조정 완료")
 
         // TensorFlow Lite 모델에 사용할 이미지를 스케일 조정 (imageSize로 설정)
