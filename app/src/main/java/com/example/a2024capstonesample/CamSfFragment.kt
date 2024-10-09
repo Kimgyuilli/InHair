@@ -1,7 +1,6 @@
 package com.example.a2024capstonesample
 
-// AndroidX 라이브러리 임포트
-// 안드로이드 기본 컴포넌트 임포트
+
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ContentValues
@@ -18,6 +17,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.ScaleGestureDetector
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -36,72 +36,113 @@ class CamSfFragment : Fragment() {
     private var _binding: FragmentCamerasurfaceBinding? = null
     private val binding get() = _binding!!
     private var camera: Camera? = null // 카메라 객체
+    private lateinit var scaleGestureDetector: ScaleGestureDetector
+    private var currentZoom = 0 // 현재 줌 값 저장
+    private var maxZoom = 1f
 
-    private lateinit var photoURI: Uri // 사진 URI 저장 변수
-    private lateinit var curPhotoPath: String // 사진 경로 저장 변수
 
     override fun onCreateView(
-
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentCamerasurfaceBinding.inflate(inflater, container, false)
         return binding.root
     }
+    @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 카메라 테스트 버튼 클릭 이벤트 처리
-        binding.buttonMainCapture.setOnClickListener {
-            Log.d("CameraDebug", "btnSurFace")
-            takeCapture()
+        scaleGestureDetector = ScaleGestureDetector(requireContext(), object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                val scaleFactor = detector.scaleFactor
+                // 줌 인 및 줌 아웃을 위한 비율 조정
+                if (scaleFactor > 1f) { // 줌 인
+                    if (currentZoom < maxZoom) {
+                        currentZoom++
+                    }
+                } else if (scaleFactor < 1f) { // 줌 아웃
+                    if (currentZoom > 0) {
+                        currentZoom--
+                    }
+                }
+                setCameraZoom(currentZoom.toFloat())
+                return true
+            }
+        })
+
+        // 터치 이벤트 리스너 설정
+        binding.cameraPreviewMain.setOnTouchListener { _, event ->
+            scaleGestureDetector.onTouchEvent(event)
+            true
         }
 
         // SurfaceHolder 설정
         val surfaceHolder = binding.cameraPreviewMain.holder
         surfaceHolder.addCallback(object : SurfaceHolder.Callback {
             override fun surfaceCreated(holder: SurfaceHolder) {
-                // 카메라 초기화
-                try {
-                    camera = Camera.open() // 카메라 열기
-                    // 카메라 프리뷰 회전 설정
-                    val info = CameraInfo()
-                    Camera.getCameraInfo(CameraInfo.CAMERA_FACING_BACK, info) // 후면 카메라의 정보를 가져옴
-                    val rotation = requireActivity().windowManager.defaultDisplay.rotation
-                    val degrees = when (rotation) {
-                        Surface.ROTATION_0 -> 0
-                        Surface.ROTATION_90 -> 90
-                        Surface.ROTATION_180 -> 180
-                        Surface.ROTATION_270 -> 270
-                        else -> 0
-                    }
-
-                    val result = (info.orientation - degrees + 360) % 360
-                    camera?.setDisplayOrientation(result)
-                    camera?.setPreviewDisplay(holder) // SurfaceView에 프리뷰 표시
-                    camera?.startPreview() // 프리뷰 시작
-                } catch (e: Exception) {
-                    Log.e("CamSfFragment", "Error setting up camera: ${e.message}")
-                }
+                initializeCamera()
             }
 
             override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-                // SurfaceView가 변경되었을 때의 처리
+                // SurfaceView가 변경되었을 때 처리
             }
 
             override fun surfaceDestroyed(holder: SurfaceHolder) {
-                // SurfaceView가 파괴되면 카메라 해제
-                camera?.stopPreview()
-                camera?.release()
-                camera = null
+                releaseCamera()
             }
         })
+
+        // 촬영 버튼 클릭 이벤트 처리
+        binding.buttonMainCapture.setOnClickListener {
+            Log.d("CameraDebug", "btnSurFace")
+            takeCapture()
+        }
+
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+    private fun initializeCamera() {
+        try {
+            camera = Camera.open()
+            val params = camera?.parameters
+
+            // 줌 지원 여부 확인 및 최대 줌 값 설정
+            if (params?.isZoomSupported == true) {
+                maxZoom = params.maxZoom.toFloat()
+            } else {
+                maxZoom = 1f
+            }
+
+            // 카메라 프리뷰 회전 설정
+            val info = CameraInfo()
+            Camera.getCameraInfo(CameraInfo.CAMERA_FACING_BACK, info)
+            val rotation = requireActivity().windowManager.defaultDisplay.rotation
+            val degrees = when (rotation) {
+                Surface.ROTATION_0 -> 0
+                Surface.ROTATION_90 -> 90
+                Surface.ROTATION_180 -> 180
+                Surface.ROTATION_270 -> 270
+                else -> 0
+            }
+            val result = (info.orientation - degrees + 360) % 360
+            camera?.setDisplayOrientation(result)
+
+            // 프리뷰 시작
+            camera?.setPreviewDisplay(binding.cameraPreviewMain.holder)
+            camera?.startPreview()
+        } catch (e: Exception) {
+            Log.e("CamSfFragment", "Error initializing camera: ${e.message}")
+        }
     }
+
+    private fun setCameraZoom(zoomLevel: Float) {
+        val params = camera?.parameters
+        if (params?.isZoomSupported == true) {
+            params.zoom = zoomLevel.toInt().coerceIn(0, params.maxZoom)
+            camera?.parameters = params
+            camera?.startPreview()
+        }
+    }
+
     @SuppressLint("QueryPermissionsNeeded")
     public fun takeCapture() {
         if (camera != null) {
@@ -156,6 +197,18 @@ class CamSfFragment : Fragment() {
         } else {
             Toast.makeText(requireContext(), "카메라가 준비되지 않았습니다.", Toast.LENGTH_SHORT).show()
         }
+    }
+    // 카메라 해제 함수
+    private fun releaseCamera() {
+        camera?.stopPreview()
+        camera?.release()
+        camera = null
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        releaseCamera() // 뷰가 파괴될 때 카메라 해제
+        _binding = null
     }
 
 
