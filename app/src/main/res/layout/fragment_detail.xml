@@ -52,94 +52,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_margin="10dp">
-
-            <!-- 날짜별 기록을 위한 클릭 가능한 영역 (사진을 찍은 날이 있으면 추가) -->
-            <LinearLayout
-                android:id="@+id/btn_date_detail"
-                android:layout_width="match_parent"
-                android:layout_height="200dp"
-                android:layout_margin="10dp"
-                android:orientation="vertical"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackground">
-
-                <!-- 촬영 날짜 (실제 촬영한 날짜가 출력해야 함) -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="0000년 00월 00일"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <!-- 사진 -->
-                <ScrollView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content">
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-
-                        <!-- 사진 (찍을 때마다 추가해야 함) -->
-                        <ImageButton
-                            android:layout_width="80dp"
-                            android:layout_height="100dp"
-                            android:contentDescription="사진" />
-
-                        <ImageButton
-                            android:layout_width="80dp"
-                            android:layout_height="100dp"
-                            android:contentDescription="사진" />
-                    </LinearLayout>
-                </ScrollView>
-            </LinearLayout>
-
-            <!-- 예시로 하나 더 작성함 -->
-            <LinearLayout
-                android:id="@+id/btn_date_detail02"
-                android:layout_width="match_parent"
-                android:layout_height="200dp"
-                android:layout_margin="10dp"
-                android:orientation="vertical"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackground">
-
-                <!-- 촬영 날짜 -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="0000년 00월 00일"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <!-- 사진 -->
-                <ScrollView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content">
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-
-                        <!-- 사진 (찍을 때마다 추가해야 함) -->
-                        <ImageButton
-                            android:layout_width="80dp"
-                            android:layout_height="100dp"
-                            android:contentDescription="사진" />
-
-                        <ImageButton
-                            android:layout_width="80dp"
-                            android:layout_height="100dp"
-                            android:contentDescription="사진" />
-                    </LinearLayout>
-                </ScrollView>
-            </LinearLayout>
-
+            android:layout_margin="10dp"
+            android:padding="10dp">
         </LinearLayout>
+
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
