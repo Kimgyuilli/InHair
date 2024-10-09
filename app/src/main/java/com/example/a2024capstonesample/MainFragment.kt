@@ -6,17 +6,13 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.ContentValues
-import android.content.Context
 import android.content.Intent
 import android.content.res.AssetFileDescriptor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import android.hardware.Camera
-import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -49,10 +45,6 @@ import java.nio.channels.FileChannel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import com.example.a2024capstonesample.data.PhotoDataManager
-import com.example.a2024capstonesample.data.PhotoData
-import java.io.FileNotFoundException
-import java.io.FileOutputStream
 
 
 class MainFragment : Fragment() {
@@ -83,7 +75,7 @@ class MainFragment : Fragment() {
         parentFragmentManager.setFragmentResultListener("camera_result", viewLifecycleOwner) { _, bundle ->
             val photoData = bundle.getByteArray("photo_data")
             photoData?.let {
-                onPictureTaken(it, requireContext())
+                onPictureTaken(it)
                 val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
                 ivProfile.setImageBitmap(bitmap)
                 savePhoto(bitmap)
@@ -102,7 +94,6 @@ class MainFragment : Fragment() {
         // 카메라 버튼 클릭 이벤트 처리
         binding.btnCamera.setOnClickListener {
             Log.d("CameraDebug", "btnSurFace")
-            val photoFile = createImageFile()   // 파일 생성 및 경로 설정
             findNavController().navigate(R.id.action_MainFragment_to_CamSfFragment) // 카메라 테스트 Fragment로 이동
         }
 
@@ -125,78 +116,14 @@ class MainFragment : Fragment() {
                     bitmap?.let {
                         ivProfile.setImageBitmap(null)
                         ivProfile.setImageBitmap(it) // 이미지 뷰에 설정
-
-                        // 갤러리에서 선택한 이미지의 절대 경로 가져오기
-                        val filePath = getRealPathFromURI(uri)
-                        if (filePath != null) {
-                            curPhotoPath = filePath // 절대 경로를 curPhotoPath에 저장
-                            Log.d("MainFragment", "갤러리에서 불러온 절대 경로: $curPhotoPath")
-                        } else {
-                            Log.e("MainFragment", "갤러리에서 선택한 이미지의 절대 경로를 가져오지 못했습니다.")
-                        }
-
-                        // 새로운 데이터를 추가하기 위해 현재 날짜와 사진 정보 생성
-                        val dateTaken = getExifDate(uri)
-                        val newPhotoData = PhotoData(
-                            date = dateTaken,
-                            photoPath = curPhotoPath,
-                            measurement = 0f // 갤러리에서 불러온 경우에는 측정 수치를 0으로 설정
-                        )
-                        PhotoDataManager.addPhotoData(newPhotoData)
-
-                        // 로그로 확인
-                        Log.d("MainFragment", "갤러리에서 불러온 사진 데이터 저장 완료: $newPhotoData")
-
-                        onPictureTaken(convertBitmapToByteArray(it), requireContext()) // 전처리를 위해 onPictureTaken에 전달
+                        onPictureTaken(convertBitmapToByteArray(it)) // 전처리를 위해 onPictureTaken에 전달
                     } // 이미지 뷰에 설정
                 }
             }
         }
+
         // 권한 요청
         requestPermissions() // 권한 요청 함수 호출
-    }
-
-    // 사진의 EXIF 정보를 사용해 촬영 날짜를 추출하는 함수
-    private fun getExifDate(uri: Uri): String {
-        val exifInterface = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            uri.let {
-                val inputStream = requireContext().contentResolver.openInputStream(it)
-                inputStream?.let { ExifInterface(it) }
-            }
-        } else {
-            uri.let {
-                val filePath = getRealPathFromURI(it)
-                filePath?.let { ExifInterface(it) }
-            }
-        }
-
-        val dateTaken = exifInterface?.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        return dateTaken?.let {
-            try {
-                dateFormat.format(SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.getDefault()).parse(it))
-            } catch (e: Exception) {
-                Log.e("MainFragment", "촬영 날짜를 파싱하는 중 오류 발생: ${e.message}")
-                dateFormat.format(Date())
-            }
-        } ?: dateFormat.format(Date())
-    }
-
-    // URI에서 실제 경로를 가져오는 메서드 (Android 10 미만을 위한 메서드)
-    @SuppressLint("Recycle")
-    private fun getRealPathFromURI(uri: Uri): String? {
-        var filePath: String? = null
-        val cursor = requireContext().contentResolver.query(uri, null, null, null, null)
-        cursor?.let {
-            if (it.moveToFirst()) {
-                val index = it.getColumnIndex(MediaStore.Images.Media.DATA)
-                if (index != -1) {
-                    filePath = it.getString(index)
-                }
-            }
-            it.close()
-        }
-        return filePath
     }
 
 
@@ -263,88 +190,46 @@ class MainFragment : Fragment() {
     }
 
 
+/*    // 카메라 실행 카메라 객체 사용 x
+    @SuppressLint("QueryPermissionsNeeded")
+    public fun takeCapture() {
+        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE) // 카메라 인텐트 생성
+        try {
+            val photoFile: File? = createImageFile() // 이미지 파일 생성
+            photoFile?.let {
+                val photoURI: Uri = FileProvider.getUriForFile(
+                    requireContext(),
+                    "${requireContext().packageName}.fileprovider",
+                    it
+                )
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI) // 촬영된 이미지의 URI 설정
+                startForResult.launch(takePictureIntent) // 카메라 인텐트 실행
+            }
+        } catch (ex: IOException) {
+            Log.e("CameraDebug", "Error creating image file", ex)
+            Toast.makeText(requireContext(), "카메라를 실행할 수 없습니다: ${ex.message}", Toast.LENGTH_SHORT).show() // 오류 메시지 표시
+        }
+    }*/
 
     // 이미지 리사이징을 위한 유틸리티 메서드
     // maxSize를 기준으로 비트맵의 크기를 조정하되 비율은 유지
-    fun resizeBitmap(context: Context, uri: Uri, targetSize: Int): Bitmap? {
-        var resizeBitmap: Bitmap? = null
-        val options = BitmapFactory.Options()
+    fun resizeBitmap(getBitmap: Bitmap, maxSize: Int): Bitmap {
+        var width = getBitmap.width
+        var height = getBitmap.height
+        val x: Double
 
-        try {
-            // 1번: 첫 번째 비트맵을 읽어와서 옵션에서 너비와 높이 가져오기
-            BitmapFactory.decodeStream(context.contentResolver.openInputStream(uri), null, options)
-            var width = options.outWidth
-            var height = options.outHeight
-            var sampleSize = 1
-
-            // 2번: 비율에 맞게 샘플 사이즈 계산
-            while (width / 2 >= targetSize && height / 2 >= targetSize) {
-                width /= 2
-                height /= 2
-                sampleSize *= 2
-            }
-
-            options.inSampleSize = sampleSize
-
-            // 3번: 최종 비트맵 리사이징
-            val bitmap = BitmapFactory.decodeStream(context.contentResolver.openInputStream(uri), null, options)
-            resizeBitmap = bitmap
-
-            // 500x500 크기의 새로운 비트맵 생성
-            val finalBitmap = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(finalBitmap)
-            // 평균 색상 계산
-            val averageColor = if (resizeBitmap != null) {
-                calculateAverageColor(resizeBitmap)
-            } else {
-                Color.GRAY // 기본 색상 또는 다른 적절한 값을 설정
-            }
-
-            // 빈 공간을 평균 색상으로 채우기
-            canvas.drawColor(averageColor)
-
-            // 중앙에 리사이즈한 비트맵을 그리기
-            val newWidth = resizeBitmap?.width ?: 0
-            val newHeight = resizeBitmap?.height ?: 0
-            val left = (targetSize - newWidth) / 2
-            val top = (targetSize - newHeight) / 2
-
-            resizeBitmap?.let {
-                canvas.drawBitmap(it, left.toFloat(), top.toFloat(), null)
-            }
-
-            return finalBitmap
-
-        } catch (e: FileNotFoundException) {
-            e.printStackTrace()
+        // 가로가 더 크면 가로를 maxSize에 맞춤
+        if (width >= height && width > maxSize) {
+            x = (width / height).toDouble()
+            width = maxSize
+            height = (maxSize / x).toInt()
+        } else if (height >= width && height > maxSize) {
+            x = (height / width).toDouble()
+            height = maxSize
+            width = (maxSize / x).toInt()
         }
-
-        return null
-    }
-
-    // 평균 색상 계산 메서드
-    fun calculateAverageColor(bitmap: Bitmap): Int {
-        var red = 0
-        var green = 0
-        var blue = 0
-        var pixelCount = 0
-
-        for (y in 0 until bitmap.height) {
-            for (x in 0 until bitmap.width) {
-                val color = bitmap.getPixel(x, y)
-                red += (color shr 16) and 0xff
-                green += (color shr 8) and 0xff
-                blue += color and 0xff
-                pixelCount++
-            }
-        }
-
-        // 평균 색상 계산
-        red /= pixelCount
-        green /= pixelCount
-        blue /= pixelCount
-
-        return (0xff shl 24) or (red shl 16) or (green shl 8) or blue
+        // 스케일된 비트맵을 반환
+        return Bitmap.createScaledBitmap(getBitmap, width, height, false)
     }
 
     // 이미지 픽셀 데이터를 TensorFlow Lite 입력 형식으로 변환
@@ -367,28 +252,10 @@ class MainFragment : Fragment() {
         return input_img
     }
 
-    // 갤러리 열기
-    private fun openGallery() {
-        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI) // 갤러리 인텐트 생성
-        galleryActivityResultLauncher.launch(intent) // 갤러리 실행
-    }
-
-    // 이미지 파일 생성
-    private fun createImageFile(): File {
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date()) // 현재 시간으로 파일명 생성
-        val storageDir: File? = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES) // 외부 저장소의 사진 디렉터리 경로
-        return File.createTempFile(
-            "JPEG_${timestamp}_", // 파일 이름
-            ".jpg", // 확장자
-            storageDir // 저장 위치
-        ).apply {
-            curPhotoPath = absolutePath // 현재 사진 경로 저장
-        }
-    }
-
     // onPictureTaken 메서드: 여기서 전처리 수행
-    private fun onPictureTaken(data: ByteArray, context: Context) {
+    private fun onPictureTaken(data: ByteArray) {
 
+       /* 프레임에 맞춘 전처리*/
         // 이미지 크기 설정
         val imageSize = 500
 
@@ -398,16 +265,57 @@ class MainFragment : Fragment() {
         val bitmapOriginal = BitmapFactory.decodeByteArray(data, 0, data.size, options)
         Log.d("CameraApp", "비트맵으로 변환 완료")
 
-        // 비트맵을 Uri로 변환 (임시로 저장된 이미지 파일을 사용하는 방식)
-        val uri = saveBitmapToFile(context, bitmapOriginal)
+        // 비트맵의 크기와 중앙 위치 계산
+        val width = bitmapOriginal.width
+        val height = bitmapOriginal.height
 
-        // 비율을 유지하면서 크기를 조정하고 빈 공간을 특정 색으로 채우기
-        val bitmapForTensorFlow = resizeBitmap(context, uri, imageSize)
-        Log.d("CameraApp", "비트맵 리사이즈 및 빈 공간 채우기 완료")
+        // 프레임의 중앙 위치와 크기 설정
+        val frameSize = 500
+        val left = (width - frameSize) / 2
+        val top = (height - frameSize) / 2
+
+        // 원본 비트맵에서 프레임에 맞춰 잘라내기
+        val croppedBitmap = Bitmap.createBitmap(
+            bitmapOriginal,
+            left,
+            top,
+            frameSize,
+            frameSize
+        )
+
+        //기존 전처리
+/*      val imageSize = 500
+        // byte array를 bitmap으로 변환
+        val options = BitmapFactory.Options()
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888
+        val bitmapOriginal = BitmapFactory.decodeByteArray(data, 0, data.size, options)
+        Log.d("CameraApp", "비트맵으로 변환 완료")
+
+        // 이미지를 디바이스 방향으로 회전할 경우 사용 가능 (회전 매트릭스)
+        val matrix = Matrix()
+
+        // 원본 비트맵에서 특정 부분 잘라내기 (원하는 경우)
+        val width = bitmapOriginal.width
+        val height = bitmapOriginal.height
+        val croppedBitmap = Bitmap.createBitmap(
+            bitmapOriginal,
+            width / 6,
+            height / 6,
+            (width / 6) * 4,
+            (height / 6) * 4,
+            matrix,
+            true
+        )*/
+        Log.d("CameraApp", "비트맵 크기 조정 완료")
+
+        // TensorFlow Lite 모델에 사용할 이미지를 스케일 조정 (imageSize로 설정)
+        var bitmapForTensorFlow = Bitmap.createScaledBitmap(croppedBitmap, imageSize, imageSize, false)
+        bitmapForTensorFlow = resizeBitmap(bitmapForTensorFlow, imageSize)
+        Log.d("CameraApp", "TensorFlow용 비트맵 스케일 완료")
 
         // 비트맵 이미지를 TensorFlow Lite로 입력하기 위해 처리
         val pixels = IntArray(imageSize * imageSize)
-        bitmapForTensorFlow?.getPixels(pixels, 0, imageSize, 0, 0, imageSize, imageSize)
+        bitmapForTensorFlow.getPixels(pixels, 0, imageSize, 0, 0, imageSize, imageSize)
         Log.d("CameraApp", "비트맵 픽셀 데이터 가져오기 완료")
 
         // TensorFlow Lite 입력 형식으로 변환
@@ -415,29 +323,14 @@ class MainFragment : Fragment() {
         Log.d("CameraApp", "입력 이미지 데이터 생성 완료")
 
         // TFLite 인터프리터 실행
-        val tfLiteInterpreter = getTfliteInterpreter("scalp_classification_model_J_20_500_GB_0.tflite") // 최신 모델
-        val prediction = Array(1) { FloatArray(2) } // 최신 모델 쓸 때
+/*        val tfLiteInterpreter = getTfliteInterpreter("scalp_classification_model_J_20_500_0.tflite") //이전 모델*/
+        val tfLiteInterpreter = getTfliteInterpreter("scalp_classification_model_J_20_500_GB_0.tflite") //최신 모델
+/*      val prediction = Array(1) { FloatArray(3) } //이전 모델 쓸 때*/
+        val prediction = Array(1) { FloatArray(2) } //최신 모델 쓸 때
 
         Log.d("CameraApp", "TensorFlow Lite 모델 실행 중...")
         tfLiteInterpreter!!.run(input_img, prediction)
         Log.d("CameraApp", "모델 예측 완료")
-
-        // curPhotoPath 초기화 확인
-        if (!::curPhotoPath.isInitialized) {
-            Log.e("MainFragment", "curPhotoPath가 초기화되지 않았습니다.")
-            return
-        }
-
-        // 사진 경로에 맞는 데이터를 찾아 수치 업데이트
-        val matchingPhotoData = PhotoDataManager.getAllPhotoData().find {
-            it.photoPath == curPhotoPath || it.photoPath == Uri.fromFile(File(curPhotoPath)).toString()
-        }
-        if (matchingPhotoData != null) {
-            matchingPhotoData.measurement = 100 * prediction[0][0] // 양호 확률 업데이트
-            Log.d("MainFragment", "사진 데이터 수치 업데이트 완료: ${matchingPhotoData.measurement}")
-        } else {
-            Log.e("MainFragment", "사진 데이터 업데이트 실패: 경로를 찾을 수 없습니다. curPhotoPath: $curPhotoPath")
-        }
 
         // 예측 결과 출력
         val resultMessage = String.format("두피 건강 상태:\n 양호 확률: %6.2f%%\n주의 확률: %6.2f%%", 100 * prediction[0][0], 100 * prediction[0][1])
@@ -450,15 +343,6 @@ class MainFragment : Fragment() {
             .show()
 
         Log.d("CameraApp", "예측 결과 표시 완료")
-    }
-
-    // 비트맵을 파일로 저장하고 URI 반환하는 메서드
-    private fun saveBitmapToFile(context: Context, bitmap: Bitmap): Uri {
-        val file = File(context.cacheDir, "temp_image.png") // 임시 파일 경로
-        FileOutputStream(file).use { out ->
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-        }
-        return Uri.fromFile(file) // URI 반환
     }
 
     private fun getTfliteInterpreter(modelPath: String): Interpreter? {
@@ -478,6 +362,25 @@ class MainFragment : Fragment() {
         } catch (e: IOException) {
             Log.e("CameraApp", "모델 파일을 불러오는 중 오류 발생: " + e.message)
             return null
+        }
+    }
+
+    // 갤러리 열기
+    private fun openGallery() {
+        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI) // 갤러리 인텐트 생성
+        galleryActivityResultLauncher.launch(intent) // 갤러리 실행
+    }
+
+    // 이미지 파일 생성
+    private fun createImageFile(): File {
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date()) // 현재 시간으로 파일명 생성
+        val storageDir: File? = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES) // 외부 저장소의 사진 디렉터리 경로
+        return File.createTempFile(
+            "JPEG_${timestamp}_", // 파일 이름
+            ".jpg", // 확장자
+            storageDir // 저장 위치
+        ).apply {
+            curPhotoPath = absolutePath // 현재 사진 경로 저장
         }
     }
 
@@ -522,22 +425,6 @@ class MainFragment : Fragment() {
                 requireActivity().contentResolver.update(it, contentValues, null, null) // 갤러리에 업데이트
             }
             Toast.makeText(requireContext(), "사진이 앨범에 저장되었습니다.", Toast.LENGTH_SHORT).show() // 저장 완료 메시지 표시
-
-            // 촬영 날짜 추출 및 저장
-            val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-
-            // PhotoDataManager에 데이터 추가
-            val newPhotoData = PhotoData(
-                date = currentDate,
-                photoPath = it.toString(), // 저장된 이미지의 URI 경로
-                measurement = 0f // 기본 측정값 (필요 시 이후 업데이트 가능)
-            )
-            PhotoDataManager.addPhotoData(newPhotoData)
-            Log.d("MainFragment", "사진 데이터 저장 완료: $newPhotoData") // 데이터 저장 로그
-
-            // 저장된 이미지의 URI를 curPhotoPath에 업데이트
-            curPhotoPath = it.toString()
-            Log.d("MainFragment", "curPhotoPath 업데이트 완료: $curPhotoPath")
         }
     }
 }
