@@ -29,16 +29,14 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.a2024capstonesample.databinding.FragmentCamerasurfaceBinding
 import java.io.ByteArrayOutputStream
-import java.io.OutputStream
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+
 
 class CamSfFragment : Fragment() {
     // 화면 구성요소들
     private var _binding: FragmentCamerasurfaceBinding? = null
     private val binding get() = _binding!!
     private var camera: Camera? = null // 카메라 객체
+
     private lateinit var photoURI: Uri // 사진 URI 저장 변수
     private lateinit var curPhotoPath: String // 사진 경로 저장 변수
 
@@ -145,9 +143,6 @@ class CamSfFragment : Fragment() {
                             // MainFragment로 돌아가기
                             findNavController().navigateUp()
 
-                            // 카메라 리소스 해제
-                            camera.stopPreview()
-                            camera.release()
 
                         } catch (e: Exception) {
                             Log.e("CameraDebug", "이미지 처리 중 오류 발생: ${e.message}")
@@ -163,49 +158,5 @@ class CamSfFragment : Fragment() {
         }
     }
 
-/*    // 촬영된 이미지를 갤러리에 저장하는 함수
-    private fun saveImageToGallery(data: ByteArray) {
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val filename = "IMG_$timestamp.jpg"
 
-        val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, filename)
-            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
-            put(MediaStore.Images.Media.IS_PENDING, 1)
-        }
-
-        val resolver = requireContext().contentResolver
-        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-
-        if (uri != null) {
-            try {
-                val outputStream: OutputStream? = resolver.openOutputStream(uri)
-                outputStream?.use { stream ->
-                    // 이미지 데이터로부터 비트맵 생성
-                    var bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
-
-                    // 회전 각도 계산 (카메라 프리뷰와 같은 회전으로 저장)
-                    val matrix = Matrix()
-                    matrix.postRotate(90f) // 반시계 방향으로 90도 회전하는 문제 해결을 위해 시계 방향으로 90도 회전
-
-                    // 회전된 비트맵 생성
-                    bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-
-                    // 압축하여 JPEG 형식으로 저장
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream)
-                }
-                values.clear()
-                values.put(MediaStore.Images.Media.IS_PENDING, 0)
-                resolver.update(uri, values, null, null)
-
-                Toast.makeText(requireContext(), "사진이 갤러리에 저장되었습니다.", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Log.e("CameraDebug", "이미지 저장 중 오류 발생: ${e.message}")
-                Toast.makeText(requireContext(), "이미지 저장 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
-            }
-        } else {
-            Toast.makeText(requireContext(), "이미지 저장에 실패했습니다.", Toast.LENGTH_SHORT).show()
-        }
-    }*/
 }

@@ -76,9 +76,13 @@ class MainFragment : Fragment() {
             val photoData = bundle.getByteArray("photo_data")
             photoData?.let {
                 onPictureTaken(it)
+                Log.d("CameraDebug", "onPictureTaken")
                 val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
+                Log.d("CameraDebug", "make bitmap")
                 ivProfile.setImageBitmap(bitmap)
+                Log.d("CameraDebug", "set bitmap")
                 savePhoto(bitmap)
+                Log.d("CameraDebug", "save photo")
             }
         }
 
@@ -117,7 +121,7 @@ class MainFragment : Fragment() {
                         ivProfile.setImageBitmap(null)
                         ivProfile.setImageBitmap(it) // 이미지 뷰에 설정
                         onPictureTaken(convertBitmapToByteArray(it)) // 전처리를 위해 onPictureTaken에 전달
-                    } // 이미지 뷰에 설정
+                    }
                 }
             }
         }
