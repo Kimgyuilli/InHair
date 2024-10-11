@@ -48,6 +48,7 @@ dependencies {
     implementation("io.github.ParkSangGwon:tedpermission-normal:3.4.2") //권한요청
     implementation ("org.tensorflow:tensorflow-lite:2.7.0") //머싱러닝 이미지 분류, 자연어 처리
     implementation ("org.tensorflow:tensorflow-lite-support:0.3.0") // 모델 변환, 후처리
+    implementation ("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

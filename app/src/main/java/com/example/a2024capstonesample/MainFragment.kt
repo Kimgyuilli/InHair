@@ -53,12 +53,16 @@ import com.example.a2024capstonesample.data.PhotoDataManager
 import com.example.a2024capstonesample.data.PhotoData
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
+import com.github.mikephil.charting.charts.LineChart
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
 
 
 class MainFragment : Fragment() {
 
     private lateinit var curPhotoPath: String // 사진 경로 저장 변수
-    private lateinit var ivProfile: ImageView // 프로필 이미지를 보여줄 ImageView
+/*    private lateinit var ivProfile: ImageView // 프로필 이미지를 보여줄 ImageView*/
     private lateinit var galleryActivityResultLauncher: ActivityResultLauncher<Intent> // 갤러리 결과를 처리할 런처
 
     private var _binding: FragmentMainBinding? = null // View Binding을 위한 변수
@@ -76,8 +80,8 @@ class MainFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 이미지 뷰 초기화
-        ivProfile = binding.chart // XML에서 ImageView 연결
+/*        // 이미지 뷰 초기화
+        ivProfile = binding.chart // XML에서 ImageView 연결*/
 
         // 카메라 결과 리스너 설정
         parentFragmentManager.setFragmentResultListener("camera_result", viewLifecycleOwner) { _, bundle ->
@@ -85,7 +89,7 @@ class MainFragment : Fragment() {
             photoData?.let {
                 onPictureTaken(it, requireContext())
                 val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
-                ivProfile.setImageBitmap(bitmap)
+/*                ivProfile.setImageBitmap(bitmap)*/
                 savePhoto(bitmap)
             }
         }
@@ -106,11 +110,6 @@ class MainFragment : Fragment() {
             findNavController().navigate(R.id.action_MainFragment_to_CamSfFragment) // 카메라 테스트 Fragment로 이동
         }
 
-        /*        // 기존 카메라 버튼 클릭 리스너 (카메라 객체 사용 x)
-                binding.btnSurFace.setOnClickListener {
-                    Log.d("CameraDebug", "takeCapture") // 디버그 로그
-                    takeCapture() // 카메라 촬영 함수 호출
-                }*/
 
         // 갤러리 버튼 클릭 리스너
         binding.btnCall.setOnClickListener { openGallery() } // 갤러리 열기 함수 호출
@@ -123,8 +122,8 @@ class MainFragment : Fragment() {
                 result.data?.data?.let { uri ->
                     val bitmap = loadImageFromUri(uri) // 선택한 이미지 로드
                     bitmap?.let {
-                        ivProfile.setImageBitmap(null)
-                        ivProfile.setImageBitmap(it) // 이미지 뷰에 설정
+/*                        ivProfile.setImageBitmap(null)
+                        ivProfile.setImageBitmap(it) // 이미지 뷰에 설정*/
 
                         // 갤러리에서 선택한 이미지의 절대 경로 가져오기
                         val filePath = getRealPathFromURI(uri)
@@ -152,9 +151,80 @@ class MainFragment : Fragment() {
                 }
             }
         }
+        setupChart()
         // 권한 요청
         requestPermissions() // 권한 요청 함수 호출
     }
+    private fun setupChart() {
+        // LineChart 초기화
+        val lineChart = binding.lineChart
+
+        // 임의의 데이터 생성
+        val entries = ArrayList<Entry>().apply {
+            add(Entry(1f, 50f))
+            add(Entry(2f, 60f))
+            add(Entry(3f, 55f))
+            add(Entry(4f, 70f))
+            add(Entry(5f, 65f))
+        }
+
+        val dataSet = LineDataSet(entries, "Sample Data").apply {
+            color = Color.BLUE
+            lineWidth = 2f
+            setCircleColor(Color.RED)
+            circleRadius = 5f
+            setDrawValues(false)
+        }
+
+        val lineData = LineData(dataSet)
+        lineChart.data = lineData
+
+        // 차트 설정
+        lineChart.apply {
+            description.text = "두피 건강 상태"
+            setTouchEnabled(true)
+            setPinchZoom(true)
+            axisRight.isEnabled = false // 오른쪽 Y축 비활성화
+        }
+
+        // X축 설정
+        val xAxis = lineChart.xAxis
+        xAxis.granularity = 1f
+        xAxis.setDrawGridLines(false)
+
+        // Y축 설정
+        val yAxis = lineChart.axisLeft
+        yAxis.axisMinimum = 0f
+        yAxis.axisMaximum = 100f
+
+        // 차트 갱신
+        lineChart.invalidate() // 차트를 다시 그리도록 갱신
+    }
+    // 사진 양호값을 차트에 추가
+/*    private fun addEntryToChart(value: Float) {
+        val lineChart = binding.lineChart
+        val data = lineChart.data
+
+        if (data != null) {
+            var dataSet = data.getDataSetByLabel("Sample Data", true)
+            if (dataSet == null) {
+                dataSet = LineDataSet(ArrayList<Entry>(), "Sample Data").apply {
+                    color = Color.BLUE
+                    lineWidth = 2f
+                    setCircleColor(Color.RED)
+                    circleRadius = 5f
+                    setDrawValues(false)
+                }
+                data.addDataSet(dataSet)
+            }
+
+            data.addEntry(Entry(dataSet.entryCount.toFloat() + 1, value), data.getIndexOfDataSet(dataSet))
+            data.notifyDataChanged()
+
+            lineChart.notifyDataSetChanged()
+            lineChart.invalidate()
+        }
+    }*/
 
     // 사진의 EXIF 정보를 사용해 촬영 날짜를 추출하는 함수
     private fun getExifDate(uri: Uri): String {
@@ -433,6 +503,8 @@ class MainFragment : Fragment() {
             .setTitle("두피 건강 예측 결과")
             .setMessage(resultMessage)
             .setPositiveButton("확인", null)
+/*            // 예측 값 중 양호 확률을 차트에 추가
+            addEntryToChart(100 * prediction[0][0])*/
             .show()
 
         Log.d("CameraApp", "예측 결과 표시 완료")
