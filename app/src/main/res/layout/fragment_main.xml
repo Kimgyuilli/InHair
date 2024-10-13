@@ -139,11 +139,11 @@
                     android:layout_margin="10dp" />
                 <!--차트 테스트-->
                 <Button
-                    android:id="@+id/btn_chart"
+                    android:id="@+id/btn_Delete"
                     android:layout_width="165dp"
                     android:layout_height="70dp"
                     android:textSize="18sp"
-                    android:text="차트테스트"
+                    android:text="db테스트"
                     android:layout_margin="10dp" />
             </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>

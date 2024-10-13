@@ -22,7 +22,9 @@
         <action
             android:id="@+id/action_MainFragment_to_CamSfFragment"
             app:destination="@id/CamSfFragment" />
-
+        <action
+            android:id="@+id/action_MainFragment_to_RoomTest"
+            app:destination="@id/roomtest" />
 
     </fragment>
     <fragment
@@ -45,6 +47,11 @@
         android:label="@string/solution_fragment_label"
         tools:layout="@layout/fragment_main">
     </fragment>
-
+    <fragment
+        android:id="@+id/roomtest"
+        android:name="com.example.a2024capstonesample.RoomTest"
+        android:label="@string/solution_fragment_label"
+        tools:layout="@layout/data_room">
+    </fragment>>
 
 </navigation>

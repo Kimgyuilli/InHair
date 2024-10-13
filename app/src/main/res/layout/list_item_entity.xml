@@ -1,0 +1,33 @@
+<!-- list_item_entity.xml -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="8dp"
+    android:weightSum="3">
+
+    <TextView
+        android:id="@+id/itemDate"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="날짜"
+        android:textAlignment="center"/>
+
+    <TextView
+        android:id="@+id/itemImagePath"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="경로"
+        android:textAlignment="center"/>
+
+    <TextView
+        android:id="@+id/itemScore"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="점수"
+        android:textAlignment="center"/>
+</LinearLayout>

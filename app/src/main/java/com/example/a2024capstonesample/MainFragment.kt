@@ -57,13 +57,20 @@ import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
+import com.example.a2024capstonesample.Room.MyAppDatabase
+import com.example.a2024capstonesample.Room.MyEntity
+import com.example.a2024capstonesample.databinding.DataRoomBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 class MainFragment : Fragment() {
 
     private lateinit var curPhotoPath: String // 사진 경로 저장 변수
-/*    private lateinit var ivProfile: ImageView // 프로필 이미지를 보여줄 ImageView*/
     private lateinit var galleryActivityResultLauncher: ActivityResultLauncher<Intent> // 갤러리 결과를 처리할 런처
+    private lateinit var database: MyAppDatabase // Database 저장경로
 
     private var _binding: FragmentMainBinding? = null // View Binding을 위한 변수
     private val binding get() = _binding!! // Binding 초기화
@@ -74,23 +81,30 @@ class MainFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentMainBinding.inflate(inflater, container, false) // Fragment의 View를 생성
+        database = MyAppDatabase.getDatabase(requireContext()) //데이터베이스 연결
         return binding.root // 생성된 View 반환
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-/*        // 이미지 뷰 초기화
-        ivProfile = binding.chart // XML에서 ImageView 연결*/
-
         // 카메라 결과 리스너 설정
         parentFragmentManager.setFragmentResultListener("camera_result", viewLifecycleOwner) { _, bundle ->
             val photoData = bundle.getByteArray("photo_data")
             photoData?.let {
-                onPictureTaken(it, requireContext())
+                val score = onPictureTaken(it, requireContext())
                 val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
-/*                ivProfile.setImageBitmap(bitmap)*/
-                savePhoto(bitmap)
+                val result: Pair<String, String>? = savePhoto(bitmap)
+                // 결과 처리
+                result?.let { (date, path) ->
+                    Log.d("MainFragment", "저장된 날짜: $date")
+                    Log.d("MainFragment", "저장된 경로: $path")
+
+                    // insertPhoto 호출
+                    insertPhoto(date, path, score)
+                } ?: run {
+                    Log.e("insertPhoto", "데이터 저장에 실패했습니다")
+                }
             }
         }
 
@@ -109,12 +123,16 @@ class MainFragment : Fragment() {
             val photoFile = createImageFile()   // 파일 생성 및 경로 설정
             findNavController().navigate(R.id.action_MainFragment_to_CamSfFragment) // 카메라 테스트 Fragment로 이동
         }
+        // db테스트 버튼
+        binding.btnDelete.setOnClickListener {
+            findNavController().navigate(R.id.action_MainFragment_to_RoomTest) // Roomtest Fragment로 이동
+        }
 
 
         // 갤러리 버튼 클릭 리스너
         binding.btnCall.setOnClickListener { openGallery() } // 갤러리 열기 함수 호출
 
-        // 갤러리 선택 결과를 처리하는 런처 설정
+// 갤러리 선택 결과를 처리하는 런처 설정
         galleryActivityResultLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { result: ActivityResult ->
@@ -122,8 +140,6 @@ class MainFragment : Fragment() {
                 result.data?.data?.let { uri ->
                     val bitmap = loadImageFromUri(uri) // 선택한 이미지 로드
                     bitmap?.let {
-/*                        ivProfile.setImageBitmap(null)
-                        ivProfile.setImageBitmap(it) // 이미지 뷰에 설정*/
 
                         // 갤러리에서 선택한 이미지의 절대 경로 가져오기
                         val filePath = getRealPathFromURI(uri)
@@ -146,15 +162,30 @@ class MainFragment : Fragment() {
                         // 로그로 확인
                         Log.d("MainFragment", "갤러리에서 불러온 사진 데이터 저장 완료: $newPhotoData")
 
-                        onPictureTaken(convertBitmapToByteArray(it), requireContext()) // 전처리를 위해 onPictureTaken에 전달
-                    } // 이미지 뷰에 설정
+                        // 사진 전처리를 위해 onPictureTaken에 전달하고 점수 가져오기
+                        val score = onPictureTaken(convertBitmapToByteArray(it), requireContext())
+
+                        // insertPhoto 호출
+                        insertPhoto(dateTaken, curPhotoPath, score) // score, 찍힌 날짜, 절대 경로를 인자로 전달
+                    }
                 }
             }
         }
+
         setupChart()
         // 권한 요청
         requestPermissions() // 권한 요청 함수 호출
     }
+    //db에 데이터 삽입
+    private fun insertPhoto(date: String, imagePath: String, score: Float) {
+        CoroutineScope(Dispatchers.IO).launch {
+            // score를 "%6.2f%%" 형식으로 변환
+            val formattedScore = String.format("%.2f%%", score)
+            // MyEntity 생성 시 필요한 데이터들을 인자로 받아서 insert
+            database.myDao().insert(MyEntity(date = date, imagePath = imagePath, score = score, formattedScore = formattedScore))
+        }
+    }
+
     private fun setupChart() {
         // LineChart 초기화
         val lineChart = binding.lineChart
@@ -200,31 +231,6 @@ class MainFragment : Fragment() {
         // 차트 갱신
         lineChart.invalidate() // 차트를 다시 그리도록 갱신
     }
-    // 사진 양호값을 차트에 추가
-/*    private fun addEntryToChart(value: Float) {
-        val lineChart = binding.lineChart
-        val data = lineChart.data
-
-        if (data != null) {
-            var dataSet = data.getDataSetByLabel("Sample Data", true)
-            if (dataSet == null) {
-                dataSet = LineDataSet(ArrayList<Entry>(), "Sample Data").apply {
-                    color = Color.BLUE
-                    lineWidth = 2f
-                    setCircleColor(Color.RED)
-                    circleRadius = 5f
-                    setDrawValues(false)
-                }
-                data.addDataSet(dataSet)
-            }
-
-            data.addEntry(Entry(dataSet.entryCount.toFloat() + 1, value), data.getIndexOfDataSet(dataSet))
-            data.notifyDataChanged()
-
-            lineChart.notifyDataSetChanged()
-            lineChart.invalidate()
-        }
-    }*/
 
     // 사진의 EXIF 정보를 사용해 촬영 날짜를 추출하는 함수
     private fun getExifDate(uri: Uri): String {
@@ -441,7 +447,7 @@ class MainFragment : Fragment() {
     }
 
     // onPictureTaken 메서드: 여기서 전처리 수행
-    private fun onPictureTaken(data: ByteArray, context: Context) {
+    private fun onPictureTaken(data: ByteArray, context: Context) : Float{
 
         // 이미지 크기 설정
         val imageSize = 500
@@ -481,7 +487,7 @@ class MainFragment : Fragment() {
         // curPhotoPath 초기화 확인
         if (!::curPhotoPath.isInitialized) {
             Log.e("MainFragment", "curPhotoPath가 초기화되지 않았습니다.")
-            return
+            return 0f
         }
 
         // 사진 경로에 맞는 데이터를 찾아 수치 업데이트
@@ -508,6 +514,7 @@ class MainFragment : Fragment() {
             .show()
 
         Log.d("CameraApp", "예측 결과 표시 완료")
+        return prediction[0][0]
     }
 
     // 비트맵을 파일로 저장하고 URI 반환하는 메서드
@@ -555,9 +562,10 @@ class MainFragment : Fragment() {
         }
     }
 
-    // 사진 저장
-    private fun savePhoto(bitmap: Bitmap) {
-        val filename = "${System.currentTimeMillis()}.jpeg" // 현재 시간을 파일명으로 설정
+
+    // 사진 저장 후 날짜와 경로를 반환하는 메서드
+    private fun savePhoto(bitmap: Bitmap): Pair<String, String>? {
+        val filename = "IMG_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.jpeg" // 날짜 및 시간을 파일명으로 설정
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, filename) // 파일 이름 설정
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg") // MIME 타입 설정
@@ -579,6 +587,7 @@ class MainFragment : Fragment() {
                 contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0) // 저장 완료 표시
                 requireActivity().contentResolver.update(it, contentValues, null, null) // 갤러리에 업데이트
             }
+
             Toast.makeText(requireContext(), "사진이 앨범에 저장되었습니다.", Toast.LENGTH_SHORT).show() // 저장 완료 메시지 표시
 
             // 촬영 날짜 추출 및 저장
@@ -596,6 +605,14 @@ class MainFragment : Fragment() {
             // 저장된 이미지의 URI를 curPhotoPath에 업데이트
             curPhotoPath = it.toString()
             Log.d("MainFragment", "curPhotoPath 업데이트 완료: $curPhotoPath")
+
+            // 촬영 날짜와 저장 경로를 반환
+            return Pair(currentDate, curPhotoPath)
         }
+
+        // 이미지 저장 실패 시 null 반환
+        return null
     }
+
+
 }
