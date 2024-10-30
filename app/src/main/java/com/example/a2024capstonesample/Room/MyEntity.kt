@@ -11,3 +11,7 @@ data class MyEntity(
     val score: Float,         // 점수
     val formattedScore: String? = null, // 포맷팅된 점수 추가
 )
+data class AverageScore(
+    val date: String,
+    val averageScore: Float
+)

@@ -14,8 +14,6 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ImageDecoder
-import android.graphics.Matrix
-import android.hardware.Camera
 import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
@@ -24,17 +22,15 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import android.view.LayoutInflater
-import android.view.SurfaceHolder
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import com.example.a2024capstonesample.Room.AverageScore
 import com.example.a2024capstonesample.databinding.FragmentMainBinding
 import com.gun0912.tedpermission.PermissionListener
 import com.gun0912.tedpermission.normal.TedPermission
@@ -53,17 +49,18 @@ import com.example.a2024capstonesample.data.PhotoDataManager
 import com.example.a2024capstonesample.data.PhotoData
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
-import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.example.a2024capstonesample.Room.MyAppDatabase
 import com.example.a2024capstonesample.Room.MyEntity
-import com.example.a2024capstonesample.databinding.DataRoomBinding
+import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.formatter.ValueFormatter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
 
 
 class MainFragment : Fragment() {
@@ -74,6 +71,8 @@ class MainFragment : Fragment() {
 
     private var _binding: FragmentMainBinding? = null // View Binding을 위한 변수
     private val binding get() = _binding!! // Binding 초기화
+    
+    private var measure = 0.0    // 양호 수치 변수
 
 
     override fun onCreateView(
@@ -99,6 +98,7 @@ class MainFragment : Fragment() {
                 result?.let { (date, path) ->
                     Log.d("MainFragment", "저장된 날짜: $date")
                     Log.d("MainFragment", "저장된 경로: $path")
+                    Log.d("MainFragment", "저장된 수치: $score")
 
                     // insertPhoto 호출
                     insertPhoto(date, path, score)
@@ -128,7 +128,6 @@ class MainFragment : Fragment() {
             findNavController().navigate(R.id.action_MainFragment_to_RoomTest) // Roomtest Fragment로 이동
         }
 
-
         // 갤러리 버튼 클릭 리스너
         binding.btnCall.setOnClickListener { openGallery() } // 갤러리 열기 함수 호출
 
@@ -150,29 +149,35 @@ class MainFragment : Fragment() {
                             Log.e("MainFragment", "갤러리에서 선택한 이미지의 절대 경로를 가져오지 못했습니다.")
                         }
 
-                        // 새로운 데이터를 추가하기 위해 현재 날짜와 사진 정보 생성
-                        val dateTaken = getExifDate(uri)
-                        val newPhotoData = PhotoData(
-                            date = dateTaken,
-                            photoPath = curPhotoPath,
-                            measurement = 0f // 갤러리에서 불러온 경우에는 측정 수치를 0으로 설정
-                        )
-                        PhotoDataManager.addPhotoData(newPhotoData)
+                        val existingPhotoData = PhotoDataManager.getAllPhotoData().find { it.photoPath == curPhotoPath }
 
-                        // 로그로 확인
-                        Log.d("MainFragment", "갤러리에서 불러온 사진 데이터 저장 완료: $newPhotoData")
+                        if (existingPhotoData != null) {
+                            Log.d("MainFragment", "이미 존재하는 사진입니다: $curPhotoPath")
+                            Toast.makeText(requireContext(), "이미 존재하는 사진입니다.", Toast.LENGTH_SHORT).show()
+                        } else {    // 존재하지 않은 사진일 경우
+                            val dateTaken = getExifDate(uri)
+                            val newPhotoData = PhotoData(
+                                date = dateTaken,
+                                photoPath = curPhotoPath,
+                                measurement = 0.0 // 갤러리에서 불러온 경우에는 측정 수치를 0으로 설정
+                            )
+                            PhotoDataManager.addPhotoData(newPhotoData)
 
-                        // 사진 전처리를 위해 onPictureTaken에 전달하고 점수 가져오기
-                        val score = onPictureTaken(convertBitmapToByteArray(it), requireContext())
+                            // 로그로 확인
+                            Log.d("MainFragment", "갤러리에서 불러온 사진 데이터 저장 완료: $newPhotoData")
 
-                        // insertPhoto 호출
-                        insertPhoto(dateTaken, curPhotoPath, score) // score, 찍힌 날짜, 절대 경로를 인자로 전달
+                            // 사진 전처리를 위해 onPictureTaken에 전달하고 점수 가져오기
+                            val score = onPictureTaken(convertBitmapToByteArray(it), requireContext())
+
+                            // insertPhoto 호출
+                            insertPhoto(dateTaken, curPhotoPath, score) // score, 찍힌 날짜, 절대 경로를 인자로 전달
+                        }
                     }
                 }
             }
         }
 
-        setupChart()
+        loadAverageScores() // 평균 점수 로드
         // 권한 요청
         requestPermissions() // 권한 요청 함수 호출
     }
@@ -186,64 +191,101 @@ class MainFragment : Fragment() {
         }
     }
 
-    private fun setupChart() {
-        // LineChart 초기화
-        val lineChart = binding.lineChart
-
-        // 임의의 데이터 생성
-        val entries = ArrayList<Entry>().apply {
-            add(Entry(1f, 50f))
-            add(Entry(2f, 60f))
-            add(Entry(3f, 55f))
-            add(Entry(4f, 70f))
-            add(Entry(5f, 65f))
+    // 데이터베이스에서 평균 점수를 로드하는 함수
+    private fun loadAverageScores() {
+        // IO 스레드에서 데이터베이스 작업 수행
+        CoroutineScope(Dispatchers.IO).launch {
+            // 데이터베이스에서 날짜별 평균 점수 조회
+            val averageScores = database.myDao().getAverageScoresByDate()
+            // UI 업데이트는 메인 스레드에서 수행
+            withContext(Dispatchers.Main) {
+                setupChart(averageScores)
+            }
         }
-
-        val dataSet = LineDataSet(entries, "Sample Data").apply {
-            color = Color.BLUE
-            lineWidth = 2f
-            setCircleColor(Color.RED)
-            circleRadius = 5f
-            setDrawValues(false)
-        }
-
-        val lineData = LineData(dataSet)
-        lineChart.data = lineData
-
-        // 차트 설정
-        lineChart.apply {
-            description.text = "두피 건강 상태"
-            setTouchEnabled(true)
-            setPinchZoom(true)
-            axisRight.isEnabled = false // 오른쪽 Y축 비활성화
-        }
-
-        // X축 설정
-        val xAxis = lineChart.xAxis
-        xAxis.granularity = 1f
-        xAxis.setDrawGridLines(false)
-
-        // Y축 설정
-        val yAxis = lineChart.axisLeft
-        yAxis.axisMinimum = 0f
-        yAxis.axisMaximum = 100f
-
-        // 차트 갱신
-        lineChart.invalidate() // 차트를 다시 그리도록 갱신
     }
+
+    // 차트를 설정하고 데이터를 표시하는 함수
+    private fun setupChart(averageScores: List<AverageScore>) {
+        // 데이터가 비어있으면 차트 설정하지 않고 종료
+        if (averageScores.isEmpty()) return
+
+        // IO 스레드에서 차트 데이터 준비
+        CoroutineScope(Dispatchers.IO).launch {
+            // 차트에 표시할 데이터 포인트를 저장할 리스트
+            val entries = arrayListOf<Entry>()
+            // 날짜 형식 지정을 위한 포맷터
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+            // 각 데이터 포인트를 차트 엔트리로 변환
+            // 인덱스를 X축 값으로 사용하여 정렬 순서 유지
+            averageScores.forEachIndexed { index, averageScore ->
+                if (averageScore.averageScore >= 0) {
+                    entries.add(Entry(index.toFloat(), averageScore.averageScore))
+                }
+            }
+
+            // 차트의 데이터셋 설정
+            val dataSet = LineDataSet(entries, "평균 점수").apply {
+                color = Color.BLUE                // 선 색상
+                lineWidth = 3f                    // 선 두께
+                setCircleColor(Color.RED)         // 데이터 포인트 색상
+                circleRadius = 5f                 // 데이터 포인트 크기
+                setDrawValues(false)              // 데이터 값 표시 여부
+            }
+
+            // 차트에 표시할 전체 데이터 설정
+            val lineData = LineData(dataSet)
+
+            // UI 스레드에서 차트 업데이트
+            withContext(Dispatchers.Main) {
+                binding.lineChart.apply {
+                    data = lineData
+
+                    // X축 설정
+                    xAxis.apply {
+                        // X축의 값을 날짜 문자열로 변환하는 포맷터
+                        valueFormatter = object : ValueFormatter() {
+                            override fun getFormattedValue(value: Float): String {
+                                val position = value.toInt()
+                                // 유효한 인덱스의 경우에만 날짜 반환
+                                return if (position >= 0 && position < averageScores.size) {
+                                    averageScores[position].date
+                                } else ""
+                            }
+                        }
+                        position = XAxis.XAxisPosition.BOTTOM  // X축 위치를 아래로 설정
+                        granularity = 1f                      // 최소 간격 설정
+                    }
+
+                    // Y축 설정
+                    axisLeft.apply {
+                        setDrawGridLines(true)    // 그리드 라인 표시
+                        axisMinimum = 0f          // Y축 최소값
+                    }
+                    axisRight.isEnabled = false   // 오른쪽 Y축 비활성화
+
+                    // 차트 설명 비활성화
+                    description.isEnabled = false
+                    // 범례 활성화
+                    legend.isEnabled = true
+
+                    // 차트 새로고침
+                    invalidate()
+                }
+            }
+        }
+    }
+
 
     // 사진의 EXIF 정보를 사용해 촬영 날짜를 추출하는 함수
     private fun getExifDate(uri: Uri): String {
+        // Android 10 이상에서는 InputStream을 사용하여 EXIF 정보 추출
         val exifInterface = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            uri.let {
-                val inputStream = requireContext().contentResolver.openInputStream(it)
-                inputStream?.let { ExifInterface(it) }
-            }
+            val inputStream = requireContext().contentResolver.openInputStream(uri)
+            inputStream?.let { ExifInterface(it) }
         } else {
-            uri.let {
-                val filePath = getRealPathFromURI(it)
-                filePath?.let { ExifInterface(it) }
-            }
+            val filePath = getRealPathFromURI(uri)
+            filePath?.let { ExifInterface(it) }
         }
 
         val dateTaken = exifInterface?.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
@@ -255,24 +297,43 @@ class MainFragment : Fragment() {
                 Log.e("MainFragment", "촬영 날짜를 파싱하는 중 오류 발생: ${e.message}")
                 dateFormat.format(Date())
             }
-        } ?: dateFormat.format(Date())
+        } ?: run {
+            Log.e("MainFragment", "EXIF 정보가 없어 기본 날짜 설정")
+            dateFormat.format(Date())
+        }
     }
 
-    // URI에서 실제 경로를 가져오는 메서드 (Android 10 미만을 위한 메서드)
+    // URI에서 실제 경로를 가져오는 메서드
     @SuppressLint("Recycle")
     private fun getRealPathFromURI(uri: Uri): String? {
-        var filePath: String? = null
-        val cursor = requireContext().contentResolver.query(uri, null, null, null, null)
-        cursor?.let {
-            if (it.moveToFirst()) {
-                val index = it.getColumnIndex(MediaStore.Images.Media.DATA)
-                if (index != -1) {
-                    filePath = it.getString(index)
+        // Android 10 이상에서는 _ID 필드로 접근
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            var filePath: String? = null
+            val cursor = requireContext().contentResolver.query(uri, arrayOf(MediaStore.Images.Media._ID), null, null, null)
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val idColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+                    val id = it.getLong(idColumn)
+                    val contentUri = Uri.withAppendedPath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id.toString())
+                    filePath = contentUri.toString() // Android 10 이상에서는 URI로 저장
                 }
             }
-            it.close()
+            return filePath
+        } else {
+            // Android 9 이하에서는 기존 방식으로 경로를 가져옴
+            var filePath: String? = null
+            val cursor = requireContext().contentResolver.query(uri, null, null, null, null)
+            cursor?.let {
+                if (it.moveToFirst()) {
+                    val index = it.getColumnIndex(MediaStore.Images.Media.DATA)
+                    if (index != -1) {
+                        filePath = it.getString(index)
+                    }
+                }
+                it.close()
+            }
+            return filePath
         }
-        return filePath
     }
 
 
@@ -490,16 +551,7 @@ class MainFragment : Fragment() {
             return 0f
         }
 
-        // 사진 경로에 맞는 데이터를 찾아 수치 업데이트
-        val matchingPhotoData = PhotoDataManager.getAllPhotoData().find {
-            it.photoPath == curPhotoPath || it.photoPath == Uri.fromFile(File(curPhotoPath)).toString()
-        }
-        if (matchingPhotoData != null) {
-            matchingPhotoData.measurement = 100 * prediction[0][0] // 양호 확률 업데이트
-            Log.d("MainFragment", "사진 데이터 수치 업데이트 완료: ${matchingPhotoData.measurement}")
-        } else {
-            Log.e("MainFragment", "사진 데이터 업데이트 실패: 경로를 찾을 수 없습니다. curPhotoPath: $curPhotoPath")
-        }
+        measure = (100 * prediction[0][0]).toDouble()
 
         // 예측 결과 출력
         val resultMessage = String.format("두피 건강 상태:\n 양호 확률: %6.2f%%\n주의 확률: %6.2f%%", 100 * prediction[0][0], 100 * prediction[0][1])
@@ -509,8 +561,8 @@ class MainFragment : Fragment() {
             .setTitle("두피 건강 예측 결과")
             .setMessage(resultMessage)
             .setPositiveButton("확인", null)
-/*            // 예측 값 중 양호 확률을 차트에 추가
-            addEntryToChart(100 * prediction[0][0])*/
+            /*            // 예측 값 중 양호 확률을 차트에 추가
+                        addEntryToChart(100 * prediction[0][0])*/
             .show()
 
         Log.d("CameraApp", "예측 결과 표시 완료")
@@ -565,53 +617,42 @@ class MainFragment : Fragment() {
 
     // 사진 저장 후 날짜와 경로를 반환하는 메서드
     private fun savePhoto(bitmap: Bitmap): Pair<String, String>? {
-        val filename = "IMG_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.jpeg" // 날짜 및 시간을 파일명으로 설정
+        val filename = "IMG_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.jpeg"
         val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, filename) // 파일 이름 설정
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg") // MIME 타입 설정
+            put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES) // API 29 이상에서 저장 경로 설정
-                put(MediaStore.MediaColumns.IS_PENDING, 1) // 저장 중임을 표시
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
             }
         }
 
-        // 이미지 URI에 삽입하여 갤러리에 저장
         val imageUri: Uri? = requireActivity().contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
         imageUri?.let {
-            requireActivity().contentResolver.openOutputStream(it)?.use { out -> // 출력 스트림 생성
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out) // 비트맵을 JPEG 형식으로 압축
+            requireActivity().contentResolver.openOutputStream(it)?.use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
             }
-
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                contentValues.clear() // ContentValues 초기화
-                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0) // 저장 완료 표시
-                requireActivity().contentResolver.update(it, contentValues, null, null) // 갤러리에 업데이트
+                contentValues.clear()
+                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                requireActivity().contentResolver.update(it, contentValues, null, null)
             }
 
-            Toast.makeText(requireContext(), "사진이 앨범에 저장되었습니다.", Toast.LENGTH_SHORT).show() // 저장 완료 메시지 표시
+            // 저장된 이미지의 절대 경로 가져오기
+            val absolutePath = getRealPathFromURI(it) ?: it.toString()
+            curPhotoPath = absolutePath // 절대 경로로 설정
 
-            // 촬영 날짜 추출 및 저장
             val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-
-            // PhotoDataManager에 데이터 추가
-            val newPhotoData = PhotoData(
-                date = currentDate,
-                photoPath = it.toString(), // 저장된 이미지의 URI 경로
-                measurement = 0f // 기본 측정값 (필요 시 이후 업데이트 가능)
-            )
+            val newPhotoData = PhotoData(date = currentDate, photoPath = curPhotoPath, measurement = measure)
             PhotoDataManager.addPhotoData(newPhotoData)
-            Log.d("MainFragment", "사진 데이터 저장 완료: $newPhotoData") // 데이터 저장 로그
-
-            // 저장된 이미지의 URI를 curPhotoPath에 업데이트
-            curPhotoPath = it.toString()
+            Log.d("MainFragment", "사진 데이터 저장 완료: $newPhotoData")
             Log.d("MainFragment", "curPhotoPath 업데이트 완료: $curPhotoPath")
+            Log.d("MainFragment", "수치 업데이트 완료: $measure")
 
-            // 촬영 날짜와 저장 경로를 반환
             return Pair(currentDate, curPhotoPath)
         }
 
-        // 이미지 저장 실패 시 null 반환
-        return null
+        return null // 실패 시 null 반환
     }
 
 
