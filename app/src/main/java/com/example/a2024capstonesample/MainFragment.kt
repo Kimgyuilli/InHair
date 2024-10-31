@@ -60,6 +60,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.lifecycle.lifecycleScope
 
 
 
@@ -91,19 +92,40 @@ class MainFragment : Fragment() {
         parentFragmentManager.setFragmentResultListener("camera_result", viewLifecycleOwner) { _, bundle ->
             val photoData = bundle.getByteArray("photo_data")
             photoData?.let {
-                val score = onPictureTaken(it, requireContext())
+                // 먼저 bitmap을 빠르게 처리하여 UI에 표시
                 val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
-                val result: Pair<String, String>? = savePhoto(bitmap)
-                // 결과 처리
-                result?.let { (date, path) ->
-                    Log.d("MainFragment", "저장된 날짜: $date")
-                    Log.d("MainFragment", "저장된 경로: $path")
-                    Log.d("MainFragment", "저장된 수치: $score")
+                // 여기서 UI에 촬영된 이미지를 먼저 표시할 수 있습니다
 
-                    // insertPhoto 호출
-                    insertPhoto(date, path, score)
-                } ?: run {
-                    Log.e("insertPhoto", "데이터 저장에 실패했습니다")
+                // 백그라운드에서 무거운 처리 실행
+                lifecycleScope.launch(Dispatchers.IO) {
+                    try {
+                        // 이미지 처리 및 분석
+                        val score = onPictureTaken(it, requireContext())
+                        val result: Pair<String, String>? = savePhoto(bitmap)
+
+                        // UI 업데이트는 메인 스레드에서 실행
+                        withContext(Dispatchers.Main) {
+                            result?.let { (date, path) ->
+                                Log.d("MainFragment", "저장된 날짜: $date")
+                                Log.d("MainFragment", "저장된 경로: $path")
+                                Log.d("MainFragment", "저장된 수치: $score")
+
+                                // insertPhoto 호출
+                                insertPhoto(date, path, score)
+
+                                // 분석 결과를 AlertDialog로 표시
+                                showAnalysisResult(score)
+                            } ?: run {
+                                Log.e("insertPhoto", "데이터 저장에 실패했습니다")
+                                Toast.makeText(requireContext(), "데이터 저장에 실패했습니다", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            Log.e("MainFragment", "이미지 처리 중 오류 발생: ${e.message}")
+                            Toast.makeText(requireContext(), "이미지 처리 중 오류가 발생했습니다", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
             }
         }
@@ -135,42 +157,98 @@ class MainFragment : Fragment() {
         galleryActivityResultLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { result: ActivityResult ->
-            if (result.resultCode == Activity.RESULT_OK) { // 결과가 성공적인 경우
+            if (result.resultCode == Activity.RESULT_OK) {
                 result.data?.data?.let { uri ->
-                    val bitmap = loadImageFromUri(uri) // 선택한 이미지 로드
-                    bitmap?.let {
+                    // 이미지 로드를 코루틴으로 처리
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        try {
+                            // 비트맵 로드 (IO 스레드에서)
+                            val bitmap = withContext(Dispatchers.IO) {
+                                loadImageFromUri(uri)
+                            }
 
-                        // 갤러리에서 선택한 이미지의 절대 경로 가져오기
-                        val filePath = getRealPathFromURI(uri)
-                        if (filePath != null) {
-                            curPhotoPath = filePath // 절대 경로를 curPhotoPath에 저장
-                            Log.d("MainFragment", "갤러리에서 불러온 절대 경로: $curPhotoPath")
-                        } else {
-                            Log.e("MainFragment", "갤러리에서 선택한 이미지의 절대 경로를 가져오지 못했습니다.")
-                        }
+                            bitmap?.let {
+                                // 파일 경로 가져오기
+                                val filePath = withContext(Dispatchers.IO) {
+                                    getRealPathFromURI(uri)
+                                }
 
-                        val existingPhotoData = PhotoDataManager.getAllPhotoData().find { it.photoPath == curPhotoPath }
+                                // UI 스레드에서 curPhotoPath 업데이트
+                                withContext(Dispatchers.Main) {
+                                    if (filePath != null) {
+                                        curPhotoPath = filePath
+                                        Log.d("MainFragment", "갤러리에서 불러온 절대 경로: $curPhotoPath")
+                                    } else {
+                                        Log.e("MainFragment", "갤러리에서 선택한 이미지의 절대 경로를 가져오지 못했습니다.")
+                                        Toast.makeText(requireContext(), "이미지 경로를 가져오는데 실패했습니다.", Toast.LENGTH_SHORT).show()
+                                        return@withContext
+                                    }
+                                }
 
-                        if (existingPhotoData != null) {
-                            Log.d("MainFragment", "이미 존재하는 사진입니다: $curPhotoPath")
-                            Toast.makeText(requireContext(), "이미 존재하는 사진입니다.", Toast.LENGTH_SHORT).show()
-                        } else {    // 존재하지 않은 사진일 경우
-                            val dateTaken = getExifDate(uri)
-                            val newPhotoData = PhotoData(
-                                date = dateTaken,
-                                photoPath = curPhotoPath,
-                                measurement = 0.0 // 갤러리에서 불러온 경우에는 측정 수치를 0으로 설정
-                            )
-                            PhotoDataManager.addPhotoData(newPhotoData)
+                                // 중복 확인 (IO 스레드에서)
+                                val existingPhotoData = withContext(Dispatchers.IO) {
+                                    PhotoDataManager.getAllPhotoData().find { it.photoPath == curPhotoPath }
+                                }
 
-                            // 로그로 확인
-                            Log.d("MainFragment", "갤러리에서 불러온 사진 데이터 저장 완료: $newPhotoData")
+                                if (existingPhotoData != null) {
+                                    withContext(Dispatchers.Main) {
+                                        Log.d("MainFragment", "이미 존재하는 사진입니다: $curPhotoPath")
+                                        Toast.makeText(requireContext(), "이미 존재하는 사진입니다.", Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    // 새로운 사진 처리
+                                    val dateTaken = withContext(Dispatchers.IO) {
+                                        getExifDate(uri)
+                                    }
 
-                            // 사진 전처리를 위해 onPictureTaken에 전달하고 점수 가져오기
-                            val score = onPictureTaken(convertBitmapToByteArray(it), requireContext())
+                                    // 임시 PhotoData 객체 생성 및 저장
+                                    val newPhotoData = PhotoData(
+                                        date = dateTaken,
+                                        photoPath = curPhotoPath,
+                                        measurement = 0.0
+                                    )
 
-                            // insertPhoto 호출
-                            insertPhoto(dateTaken, curPhotoPath, score) // score, 찍힌 날짜, 절대 경로를 인자로 전달
+                                    withContext(Dispatchers.IO) {
+                                        PhotoDataManager.addPhotoData(newPhotoData)
+                                        Log.d("MainFragment", "갤러리에서 불러온 사진 데이터 저장 완료: $newPhotoData")
+                                    }
+
+                                    // 프로그레스 표시
+                                    withContext(Dispatchers.Main) {
+                                        showProgressDialog()
+                                    }
+
+                                    try {
+                                        // 이미지 처리 및 분석
+                                        val byteArray = withContext(Dispatchers.IO) {
+                                            convertBitmapToByteArray(it)
+                                        }
+
+                                        val score = withContext(Dispatchers.IO) {
+                                            onPictureTaken(byteArray, requireContext())
+                                        }
+
+                                        // 분석 결과 저장 및 UI 업데이트
+                                        withContext(Dispatchers.Main) {
+                                            hideProgressDialog()
+                                            insertPhoto(dateTaken, curPhotoPath, score)
+                                            showAnalysisResult(score)
+                                        }
+                                    } catch (e: Exception) {
+                                        withContext(Dispatchers.Main) {
+                                            hideProgressDialog()
+                                            Log.e("MainFragment", "이미지 처리 중 오류 발생: ${e.message}")
+                                            Toast.makeText(requireContext(), "이미지 처리 중 오류가 발생했습니다", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                hideProgressDialog()
+                                Log.e("MainFragment", "갤러리 이미지 처리 중 오류 발생: ${e.message}")
+                                Toast.makeText(requireContext(), "이미지 처리 중 오류가 발생했습니다", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 }
@@ -494,6 +572,22 @@ class MainFragment : Fragment() {
         galleryActivityResultLauncher.launch(intent) // 갤러리 실행
     }
 
+    // 프로그레스 다이얼로그 관련 변수와 메서드
+    private var progressDialog: AlertDialog? = null
+
+    private fun showProgressDialog() {
+        progressDialog = AlertDialog.Builder(requireContext())
+            .setMessage("이미지를 분석중입니다...")
+            .setCancelable(false)
+            .create()
+        progressDialog?.show()
+    }
+
+    private fun hideProgressDialog() {
+        progressDialog?.dismiss()
+        progressDialog = null
+    }
+
     // 이미지 파일 생성
     private fun createImageFile(): File {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date()) // 현재 시간으로 파일명 생성
@@ -507,74 +601,84 @@ class MainFragment : Fragment() {
         }
     }
 
-    // onPictureTaken 메서드: 여기서 전처리 수행
-    private fun onPictureTaken(data: ByteArray, context: Context) : Float{
+    // 분석 결과를 보여주는 함수
+    private fun showAnalysisResult(score: Float) {
+        val goodProbability = 100 * score
+        val cautionProbability = 100 * (1 - score)
 
-        // 이미지 크기 설정
-        val imageSize = 500
+        val resultMessage = String.format(
+            "두피 건강 상태:\n 양호 확률: %6.2f%%\n주의 확률: %6.2f%%",
+            goodProbability,
+            cautionProbability
+        )
 
-        // byte array를 bitmap으로 변환
-        val options = BitmapFactory.Options()
-        options.inPreferredConfig = Bitmap.Config.ARGB_8888
-        val bitmapOriginal = BitmapFactory.decodeByteArray(data, 0, data.size, options)
-        Log.d("CameraApp", "비트맵으로 변환 완료")
-
-        // 비트맵을 Uri로 변환 (임시로 저장된 이미지 파일을 사용하는 방식)
-        val uri = saveBitmapToFile(context, bitmapOriginal)
-
-
-
-        // 비율을 유지하면서 크기를 조정하고 빈 공간을 특정 색으로 채우기
-        val bitmapForTensorFlow = resizeBitmap(context, uri, imageSize)
-        Log.d("CameraApp", "비트맵 리사이즈 및 빈 공간 채우기 완료")
-
-        // 비트맵 이미지를 TensorFlow Lite로 입력하기 위해 처리
-        val pixels = IntArray(imageSize * imageSize)
-        bitmapForTensorFlow?.getPixels(pixels, 0, imageSize, 0, 0, imageSize, imageSize)
-        Log.d("CameraApp", "비트맵 픽셀 데이터 가져오기 완료")
-
-        // TensorFlow Lite 입력 형식으로 변환
-        val input_img: ByteBuffer = getInputImage_2(pixels, imageSize, imageSize)
-        Log.d("CameraApp", "입력 이미지 데이터 생성 완료")
-
-        // TFLite 인터프리터 실행
-        val tfLiteInterpreter = getTfliteInterpreter("scalp_classification_model_J_20_500_GB_0.tflite") // 최신 모델
-        val prediction = Array(1) { FloatArray(2) } // 최신 모델 쓸 때
-
-        Log.d("CameraApp", "TensorFlow Lite 모델 실행 중...")
-        tfLiteInterpreter!!.run(input_img, prediction)
-        Log.d("CameraApp", "모델 예측 완료")
-
-        // curPhotoPath 초기화 확인
-        if (!::curPhotoPath.isInitialized) {
-            Log.e("MainFragment", "curPhotoPath가 초기화되지 않았습니다.")
-            return 0f
-        }
-
-        measure = (100 * prediction[0][0]).toDouble()
-
-        // 예측 결과 출력
-        val resultMessage = String.format("두피 건강 상태:\n 양호 확률: %6.2f%%\n주의 확률: %6.2f%%", 100 * prediction[0][0], 100 * prediction[0][1])
-
-        // 예측 결과를 AlertDialog로 표시
         AlertDialog.Builder(requireContext())
             .setTitle("두피 건강 예측 결과")
             .setMessage(resultMessage)
             .setPositiveButton("확인", null)
-            /*            // 예측 값 중 양호 확률을 차트에 추가
-                        addEntryToChart(100 * prediction[0][0])*/
             .show()
+    }
 
-        Log.d("CameraApp", "예측 결과 표시 완료")
-        return prediction[0][0]
+    // onPictureTaken 메서드 수정
+    private suspend fun onPictureTaken(data: ByteArray, context: Context): Float {
+        return withContext(Dispatchers.IO) {
+            try {
+                val imageSize = 500
+
+                // byte array를 bitmap으로 변환
+                val options = BitmapFactory.Options()
+                options.inPreferredConfig = Bitmap.Config.ARGB_8888
+                val bitmapOriginal = BitmapFactory.decodeByteArray(data, 0, data.size, options)
+                Log.d("CameraApp", "비트맵으로 변환 완료")
+
+                // 비트맵을 Uri로 변환
+                val uri = saveBitmapToFile(context, bitmapOriginal)
+                Log.d("Onpic", " URI로 변환 완료")
+
+                // 비율을 유지하면서 크기를 조정
+                val bitmapForTensorFlow = resizeBitmap(context, uri, imageSize)
+                Log.d("CameraApp", "비트맵 리사이즈 및 빈 공간 채우기 완료")
+
+                // 비트맵 이미지를 TensorFlow Lite로 입력하기 위해 처리
+                val pixels = IntArray(imageSize * imageSize)
+                bitmapForTensorFlow?.getPixels(pixels, 0, imageSize, 0, 0, imageSize, imageSize)
+                Log.d("CameraApp", "비트맵 픽셀 데이터 가져오기 완료")
+
+                // TensorFlow Lite 입력 형식으로 변환
+                val input_img: ByteBuffer = getInputImage_2(pixels, imageSize, imageSize)
+                Log.d("CameraApp", "입력 이미지 데이터 생성 완료")
+
+                // TFLite 인터프리터 실행
+                val tfLiteInterpreter = getTfliteInterpreter("scalp_classification_model_J_20_500_GB_0.tflite")
+                val prediction = Array(1) { FloatArray(2) }
+
+                Log.d("CameraApp", "TensorFlow Lite 모델 실행 중...")
+                tfLiteInterpreter!!.run(input_img, prediction)
+                Log.d("CameraApp", "모델 예측 완료")
+
+                if (!::curPhotoPath.isInitialized) {
+                    Log.e("MainFragment", "curPhotoPath가 초기화되지 않았습니다.")
+                    return@withContext 0f
+                }
+
+                measure = (100 * prediction[0][0]).toDouble()
+
+                prediction[0][0]
+            } catch (e: Exception) {
+                Log.e("CameraApp", "이미지 처리 중 오류 발생: ${e.message}")
+                0f
+            }
+        }
     }
 
     // 비트맵을 파일로 저장하고 URI 반환하는 메서드
     private fun saveBitmapToFile(context: Context, bitmap: Bitmap): Uri {
         val file = File(context.cacheDir, "temp_image.png") // 임시 파일 경로
+        Log.d("saveBitmapToFile", "URI1")
         FileOutputStream(file).use { out ->
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
         }
+        Log.d("saveBitmapToFile", "URI2")
         return Uri.fromFile(file) // URI 반환
     }
 

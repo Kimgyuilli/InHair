@@ -95,7 +95,7 @@ class CamSfFragment : Fragment() {
         // 촬영 버튼 클릭 이벤트 처리
         binding.buttonMainCapture.setOnClickListener {
             Log.d("CameraDebug", "btnSurFace")
-            takeCapture()
+            takeCapture() // 촬영 후 즉시 메인 페이지로 이동하도록 수정
         }
 
     }
@@ -210,6 +210,4 @@ class CamSfFragment : Fragment() {
         releaseCamera() // 뷰가 파괴될 때 카메라 해제
         _binding = null
     }
-
-
 }
