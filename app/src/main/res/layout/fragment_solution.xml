@@ -7,8 +7,6 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <!-- 제목 -->
-
     <!-- 구분선 -->
     <View
         android:id="@+id/nav_underbar"
@@ -48,67 +46,21 @@
             android:background="#999999" />
 
         <!-- 건강 솔루션 목록 -->
-        <LinearLayout
-            android:id="@+id/date_solution_list"
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
+            android:layout_height="0dp"
+            android:layout_weight="1"
             android:layout_margin="10dp">
 
-            <!-- 날짜별 기록 건강 솔루션 기록 (사진을 찍은 날이 있으면 추가) -->
             <LinearLayout
-                android:id="@+id/btn_date_detail"
+                android:id="@+id/date_solution_list"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="10dp"
-                android:orientation="vertical">
-
-                <!-- 촬영 날짜 (실제 촬영한 날짜가 출력해야 함) -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="0000년 00월 00일"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:layout_margin="10dp"/>
-
-                <!-- 평균 수치에 맞는 솔루션 내용 -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="솔루션 내용"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:layout_margin="10dp"/>
+                android:orientation="vertical"
+                android:padding="10dp">
             </LinearLayout>
 
-            <!-- 예시로 하나 더 작성함 -->
-            <LinearLayout
-                android:id="@+id/btn_date_detail02"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_margin="10dp"
-                android:orientation="vertical">
+        </ScrollView>
 
-                <!-- 촬영 날짜 -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="0000년 00월 00일"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:layout_margin="10dp"/>
-
-                <!-- 평균 수치에 맞는 솔루션 내용 -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="솔루션 내용"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:layout_margin="10dp"/>
-            </LinearLayout>
-
-        </LinearLayout>
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

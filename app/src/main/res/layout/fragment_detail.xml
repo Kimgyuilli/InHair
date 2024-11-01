@@ -7,7 +7,6 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-
     <!-- 구분선 -->
     <View
         android:id="@+id/nav_underbar"
@@ -47,14 +46,21 @@
             android:background="#999999" />
 
         <!-- 상세 기록 목록 -->
-        <LinearLayout
-            android:id="@+id/date_detail_list"
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_margin="10dp"
-            android:padding="10dp">
-        </LinearLayout>
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_margin="10dp">
+
+            <LinearLayout
+                android:id="@+id/date_detail_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="10dp">
+            </LinearLayout>
+
+        </ScrollView>
 
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

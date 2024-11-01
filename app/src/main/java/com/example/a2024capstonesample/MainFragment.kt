@@ -72,9 +72,9 @@ class MainFragment : Fragment() {
 
     private var _binding: FragmentMainBinding? = null // View Binding을 위한 변수
     private val binding get() = _binding!! // Binding 초기화
-    
-    private var measure = 0.0    // 양호 수치 변수
 
+    private var goodMeasure = 0.0    // 양호 수치 변수
+    private var cautionMeasure = 0.0    // 주의 수치 변수
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -94,7 +94,8 @@ class MainFragment : Fragment() {
             photoData?.let {
                 // 먼저 bitmap을 빠르게 처리하여 UI에 표시
                 val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
-                // 여기서 UI에 촬영된 이미지를 먼저 표시할 수 있습니다
+
+                showProgressToast()    // 이미지 분석 중 메시지 표시
 
                 // 백그라운드에서 무거운 처리 실행
                 lifecycleScope.launch(Dispatchers.IO) {
@@ -105,6 +106,8 @@ class MainFragment : Fragment() {
 
                         // UI 업데이트는 메인 스레드에서 실행
                         withContext(Dispatchers.Main) {
+                            hideProgressDialog()    // 이미지 분석 중 메시지 닫기
+
                             result?.let { (date, path) ->
                                 Log.d("MainFragment", "저장된 날짜: $date")
                                 Log.d("MainFragment", "저장된 경로: $path")
@@ -153,7 +156,7 @@ class MainFragment : Fragment() {
         // 갤러리 버튼 클릭 리스너
         binding.btnCall.setOnClickListener { openGallery() } // 갤러리 열기 함수 호출
 
-// 갤러리 선택 결과를 처리하는 런처 설정
+        // 갤러리 선택 결과를 처리하는 런처 설정
         galleryActivityResultLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { result: ActivityResult ->
@@ -205,7 +208,8 @@ class MainFragment : Fragment() {
                                     val newPhotoData = PhotoData(
                                         date = dateTaken,
                                         photoPath = curPhotoPath,
-                                        measurement = 0.0
+                                        goodMeasurement = 0.0,
+                                        cautionMeasurement = 0.0
                                     )
 
                                     withContext(Dispatchers.IO) {
@@ -215,7 +219,7 @@ class MainFragment : Fragment() {
 
                                     // 프로그레스 표시
                                     withContext(Dispatchers.Main) {
-                                        showProgressDialog()
+                                        showProgressToast()
                                     }
 
                                     try {
@@ -284,18 +288,28 @@ class MainFragment : Fragment() {
 
     // 차트를 설정하고 데이터를 표시하는 함수
     private fun setupChart(averageScores: List<AverageScore>) {
-        // 데이터가 비어있으면 차트 설정하지 않고 종료
-        if (averageScores.isEmpty()) return
-
-        // IO 스레드에서 차트 데이터 준비
         CoroutineScope(Dispatchers.IO).launch {
             // 차트에 표시할 데이터 포인트를 저장할 리스트
             val entries = arrayListOf<Entry>()
+
+            // 데이터가 비어 있는 경우에도 빈 차트를 설정
+            if (averageScores.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    binding.lineChart.visibility = View.GONE
+                    binding.emptyChartImage.visibility = View.VISIBLE
+                }
+                return@launch
+            } else {
+                withContext(Dispatchers.Main) {
+                    binding.lineChart.visibility = View.VISIBLE
+                    binding.emptyChartImage.visibility = View.GONE
+                }
+            }
+
             // 날짜 형식 지정을 위한 포맷터
             val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
             // 각 데이터 포인트를 차트 엔트리로 변환
-            // 인덱스를 X축 값으로 사용하여 정렬 순서 유지
             averageScores.forEachIndexed { index, averageScore ->
                 if (averageScore.averageScore >= 0) {
                     entries.add(Entry(index.toFloat(), averageScore.averageScore))
@@ -325,7 +339,6 @@ class MainFragment : Fragment() {
                         valueFormatter = object : ValueFormatter() {
                             override fun getFormattedValue(value: Float): String {
                                 val position = value.toInt()
-                                // 유효한 인덱스의 경우에만 날짜 반환
                                 return if (position >= 0 && position < averageScores.size) {
                                     averageScores[position].date
                                 } else ""
@@ -342,10 +355,8 @@ class MainFragment : Fragment() {
                     }
                     axisRight.isEnabled = false   // 오른쪽 Y축 비활성화
 
-                    // 차트 설명 비활성화
-                    description.isEnabled = false
-                    // 범례 활성화
-                    legend.isEnabled = true
+                    description.isEnabled = false // 차트 설명 비활성화
+                    legend.isEnabled = true       // 범례 활성화
 
                     // 차트 새로고침
                     invalidate()
@@ -353,6 +364,7 @@ class MainFragment : Fragment() {
             }
         }
     }
+
 
 
     // 사진의 EXIF 정보를 사용해 촬영 날짜를 추출하는 함수
@@ -575,12 +587,8 @@ class MainFragment : Fragment() {
     // 프로그레스 다이얼로그 관련 변수와 메서드
     private var progressDialog: AlertDialog? = null
 
-    private fun showProgressDialog() {
-        progressDialog = AlertDialog.Builder(requireContext())
-            .setMessage("이미지를 분석중입니다...")
-            .setCancelable(false)
-            .create()
-        progressDialog?.show()
+    private fun showProgressToast() {
+        Toast.makeText(requireContext(), "이미지를 분석중입니다...", Toast.LENGTH_SHORT).show()
     }
 
     private fun hideProgressDialog() {
@@ -607,16 +615,11 @@ class MainFragment : Fragment() {
         val cautionProbability = 100 * (1 - score)
 
         val resultMessage = String.format(
-            "두피 건강 상태:\n 양호 확률: %6.2f%%\n주의 확률: %6.2f%%",
+            "두피 점수: %6.0f점",
             goodProbability,
-            cautionProbability
         )
 
-        AlertDialog.Builder(requireContext())
-            .setTitle("두피 건강 예측 결과")
-            .setMessage(resultMessage)
-            .setPositiveButton("확인", null)
-            .show()
+        Toast.makeText(requireContext(), resultMessage, Toast.LENGTH_LONG).show()
     }
 
     // onPictureTaken 메서드 수정
@@ -661,7 +664,8 @@ class MainFragment : Fragment() {
                     return@withContext 0f
                 }
 
-                measure = (100 * prediction[0][0]).toDouble()
+                goodMeasure = (100 * prediction[0][0]).toDouble()
+                cautionMeasure = 100 * (1.0 - prediction[0][0])
 
                 prediction[0][0]
             } catch (e: Exception) {
@@ -747,11 +751,12 @@ class MainFragment : Fragment() {
             curPhotoPath = absolutePath // 절대 경로로 설정
 
             val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-            val newPhotoData = PhotoData(date = currentDate, photoPath = curPhotoPath, measurement = measure)
+            val newPhotoData = PhotoData(date = currentDate, photoPath = curPhotoPath, goodMeasurement = goodMeasure, cautionMeasurement = cautionMeasure)
             PhotoDataManager.addPhotoData(newPhotoData)
             Log.d("MainFragment", "사진 데이터 저장 완료: $newPhotoData")
             Log.d("MainFragment", "curPhotoPath 업데이트 완료: $curPhotoPath")
-            Log.d("MainFragment", "수치 업데이트 완료: $measure")
+            Log.d("MainFragment", "양호 수치 업데이트 완료: $goodMeasure")
+            Log.d("MainFragment", "주의 수치 업데이트 완료: $cautionMeasure")
 
             return Pair(currentDate, curPhotoPath)
         }
