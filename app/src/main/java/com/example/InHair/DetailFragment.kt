@@ -1,4 +1,4 @@
-package com.example.a2024capstonesample
+package com.example.InHair
 
 import android.graphics.Typeface
 import android.os.Bundle
@@ -7,13 +7,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.TextView
-import androidx.cardview.widget.CardView
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import com.example.a2024capstonesample.Room.MyAppDatabase
-import com.example.a2024capstonesample.Room.MyEntity
-import com.example.a2024capstonesample.databinding.FragmentDetailBinding
+import com.example.InHair.Room.MyAppDatabase
+import com.example.InHair.Room.MyEntity
+import com.example.InHair.databinding.FragmentDetailBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

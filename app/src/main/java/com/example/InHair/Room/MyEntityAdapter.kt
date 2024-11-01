@@ -1,12 +1,11 @@
-package com.example.a2024capstonesample
+package com.example.InHair
 
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.example.a2024capstonesample.Room.MyEntity
-import com.example.a2024capstonesample.databinding.DataRoomBinding
+import com.example.InHair.Room.MyEntity
 
 class MyEntityAdapter(
     private val entities: List<MyEntity>,

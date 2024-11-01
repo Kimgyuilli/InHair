@@ -1,4 +1,4 @@
-package com.example.a2024capstonesample.Room
+package com.example.InHair.Room
 
 import androidx.room.Dao
 import androidx.room.Insert

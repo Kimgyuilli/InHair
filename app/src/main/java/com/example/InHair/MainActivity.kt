@@ -1,7 +1,6 @@
-package com.example.a2024capstonesample
+package com.example.InHair
 
 import android.os.Bundle
-import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
@@ -9,7 +8,7 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import android.view.Menu
 import android.view.MenuItem
-import com.example.a2024capstonesample.databinding.ActivityMainBinding
+import com.example.InHair.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 

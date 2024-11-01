@@ -1,4 +1,4 @@
-package com.example.a2024capstonesample
+package com.example.InHair
 
 import android.content.Intent
 import android.os.Bundle

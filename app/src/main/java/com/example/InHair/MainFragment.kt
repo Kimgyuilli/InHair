@@ -1,4 +1,4 @@
-package com.example.a2024capstonesample
+package com.example.InHair
 
 
 import android.Manifest
@@ -30,8 +30,8 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
-import com.example.a2024capstonesample.Room.AverageScore
-import com.example.a2024capstonesample.databinding.FragmentMainBinding
+import com.example.InHair.Room.AverageScore
+import com.example.InHair.databinding.FragmentMainBinding
 import com.gun0912.tedpermission.PermissionListener
 import com.gun0912.tedpermission.normal.TedPermission
 import org.tensorflow.lite.Interpreter
@@ -45,15 +45,15 @@ import java.nio.channels.FileChannel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import com.example.a2024capstonesample.data.PhotoDataManager
-import com.example.a2024capstonesample.data.PhotoData
+import com.example.InHair.data.PhotoDataManager
+import com.example.InHair.data.PhotoData
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
-import com.example.a2024capstonesample.Room.MyAppDatabase
-import com.example.a2024capstonesample.Room.MyEntity
+import com.example.InHair.Room.MyAppDatabase
+import com.example.InHair.Room.MyEntity
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.formatter.ValueFormatter
 import kotlinx.coroutines.CoroutineScope

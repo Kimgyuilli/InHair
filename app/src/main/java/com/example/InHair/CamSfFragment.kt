@@ -1,33 +1,24 @@
-package com.example.a2024capstonesample
+package com.example.InHair
 
 
-import android.Manifest
 import android.annotation.SuppressLint
-import android.content.ContentValues
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.hardware.Camera
 import android.hardware.Camera.CameraInfo
-import android.hardware.Camera.Size
-import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.ScaleGestureDetector
 import android.view.Surface
 import android.view.SurfaceHolder
-import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
-import com.example.a2024capstonesample.databinding.FragmentCamerasurfaceBinding
+import com.example.InHair.databinding.FragmentCamerasurfaceBinding
 import java.io.ByteArrayOutputStream
 
 

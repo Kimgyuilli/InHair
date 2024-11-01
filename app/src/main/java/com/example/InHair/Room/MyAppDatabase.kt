@@ -1,4 +1,4 @@
-package com.example.a2024capstonesample.Room
+package com.example.InHair.Room
 
 import android.content.Context
 import androidx.room.Database

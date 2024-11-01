@@ -20,6 +20,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "2024capstoneSample"
+rootProject.name = "InHair"
 include(":app")
  

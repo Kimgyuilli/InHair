@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/MainFragment"
-        android:name="com.example.a2024capstonesample.MainFragment"
+        android:name="com.example.InHair.MainFragment"
         android:label="@string/main_fragment_label"
         tools:layout="@layout/fragment_main">
 
@@ -29,27 +29,27 @@
     </fragment>
     <fragment
         android:id="@+id/SolutionFragment"
-        android:name="com.example.a2024capstonesample.SolutionFragment"
+        android:name="com.example.InHair.SolutionFragment"
         android:label="@string/solution_fragment_label"
         tools:layout="@layout/fragment_main">
 
     </fragment>
     <fragment
         android:id="@+id/CamSfFragment"
-        android:name="com.example.a2024capstonesample.CamSfFragment"
+        android:name="com.example.InHair.CamSfFragment"
         android:label="@string/camerasurface_fragment_label"
         tools:layout="@layout/fragment_main">
 
     </fragment>
     <fragment
         android:id="@+id/DetailFragment"
-        android:name="com.example.a2024capstonesample.DetailFragment"
+        android:name="com.example.InHair.DetailFragment"
         android:label="@string/solution_fragment_label"
         tools:layout="@layout/fragment_main">
     </fragment>
     <fragment
         android:id="@+id/roomtest"
-        android:name="com.example.a2024capstonesample.RoomTest"
+        android:name="com.example.InHair.RoomTest"
         android:label="@string/solution_fragment_label"
         tools:layout="@layout/data_room">
     </fragment>>

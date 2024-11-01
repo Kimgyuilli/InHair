@@ -1,6 +1,4 @@
-package com.example.a2024capstonesample.data
-
-import com.example.a2024capstonesample.data.PhotoData
+package com.example.InHair.data
 
 object PhotoDataManager {
     private val photoDataList: MutableList<PhotoData> = mutableListOf()

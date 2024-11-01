@@ -1,4 +1,4 @@
-package com.example.a2024capstonesample
+package com.example.InHair
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -6,9 +6,9 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.a2024capstonesample.Room.MyAppDatabase
-import com.example.a2024capstonesample.Room.MyEntity
-import com.example.a2024capstonesample.databinding.DataRoomBinding
+import com.example.InHair.Room.MyAppDatabase
+import com.example.InHair.Room.MyEntity
+import com.example.InHair.databinding.DataRoomBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

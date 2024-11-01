@@ -1,4 +1,4 @@
-package com.example.a2024capstonesample.data
+package com.example.InHair.data
 
 data class PhotoData(
     val date: String, // 사진 촬영 날짜

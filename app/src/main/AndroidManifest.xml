@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.example.a2024capstonesample">
+    package="com.example.InHair">
 
     <uses-feature
         android:name="android.hardware.camera"
@@ -25,7 +25,7 @@
 
         <!-- 스플래시 액티비티 추가 -->
         <activity
-            android:name=".SplashActivity"
+            android:name="com.example.InHair.SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.AppCompat.NoActionBar">
             <intent-filter>
@@ -35,7 +35,7 @@
         </activity>
 
         <activity
-            android:name=".MainActivity"
+            android:name="com.example.InHair.MainActivity"
             android:exported="true"
             android:theme="@style/Theme._2024capstoneSample">
             <intent-filter>
@@ -46,7 +46,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.example.a2024capstonesample.fileprovider"
+            android:authorities="com.example.InHair.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

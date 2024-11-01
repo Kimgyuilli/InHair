@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">2024capstoneSample</string>
+    <string name="app_name">InHair</string>
     <string name="action_settings">Settings</string>
     <!-- Strings used for fragments for navigation -->
     <string name="login_fragment_label">InHair</string>

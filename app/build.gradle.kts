@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.a2024capstonesample"
+    namespace = "com.example.InHair"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.a2024capstonesample"
+        applicationId = "com.example.InHair"
         minSdk = 23
         targetSdk = 34
         versionCode = 1
