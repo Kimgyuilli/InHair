@@ -755,9 +755,6 @@ class MainFragment : Fragment() {
 
             return Pair(currentDate, curPhotoPath)
         }
-
         return null // 실패 시 null 반환
     }
-
-
 }
