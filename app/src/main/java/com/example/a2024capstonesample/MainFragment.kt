@@ -319,10 +319,10 @@ class MainFragment : Fragment() {
             // 차트의 데이터셋 설정
             val dataSet = LineDataSet(entries, "평균 점수").apply {
                 color = Color.BLUE                // 선 색상
-                lineWidth = 3f                    // 선 두께
-                setCircleColor(Color.RED)         // 데이터 포인트 색상
-                circleRadius = 5f                 // 데이터 포인트 크기
-                setDrawValues(false)              // 데이터 값 표시 여부
+                lineWidth = 6f                    // 선 두께
+                setCircleColor(Color.BLUE)         // 데이터 포인트 색상
+                circleRadius = 6f    // 데이터 포인트 크기
+                setDrawValues(false)                           // 데이터 값 표시 여부
             }
 
             // 차트에 표시할 전체 데이터 설정
