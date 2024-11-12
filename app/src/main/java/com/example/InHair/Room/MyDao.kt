@@ -23,4 +23,7 @@ interface MyDao {
         ORDER BY date
         LIMIT 10""")
     suspend fun getAverageScoresByDate(): List<AverageScore>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM MyEntity WHERE imagePath = :path)")
+    suspend fun isPhotoPathExists(path: String): Boolean
 }

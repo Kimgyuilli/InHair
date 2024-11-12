@@ -1,20 +1,28 @@
 package com.example.InHair
 
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.InHair.Room.MyAppDatabase
 import com.example.InHair.Room.MyEntity
 import com.example.InHair.databinding.FragmentDetailBinding
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class DetailFragment : Fragment() {
     private var _binding: FragmentDetailBinding? = null
@@ -26,46 +34,40 @@ class DetailFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentDetailBinding.inflate(inflater, container, false)
-        database = MyAppDatabase.getDatabase(requireContext()) // 데이터베이스 인스턴스 초기화
+        database = MyAppDatabase.getDatabase(requireContext())
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        loadAndDisplayData() // Fragment가 보일 때마다 UI 업데이트
+        loadAndDisplayData()
     }
 
     private fun loadAndDisplayData() {
-        CoroutineScope(Dispatchers.IO).launch {
-            val entityList = database.myDao().getAllEntities() // 모든 데이터베이스 항목 불러오기
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val entityList = database.myDao().getAllEntities()
             withContext(Dispatchers.Main) {
                 updateUI(entityList)
             }
         }
     }
 
-    // 세부 기록 페이지 업데이트
     private fun updateUI(entityList: List<MyEntity>) {
         if (entityList.isEmpty() || _binding == null) return
 
-        // 로그로 리스트의 모든 데이터 출력
         Log.d("DetailFragment", "현재 데이터베이스에 저장된 데이터:")
         entityList.forEachIndexed { index, entity ->
             Log.d("DetailFragment", "[$index] 날짜: ${entity.date}, 경로: ${entity.imagePath}, 양호 수치: ${entity.score}, 포맷된 수치: ${entity.formattedScore}")
         }
 
-        // 날짜별로 그룹화하여 평균 수치 계산
         val groupedData = entityList.groupBy { it.date }
         val averageData = groupedData.mapValues { entry ->
-            val scores = entry.value.map { it.score }
-            scores.average() // 평균 수치를 저장
-        }.toSortedMap(compareByDescending { it }) // 날짜 내림차순 정렬
+            entry.value.map { it.score }.average()
+        }.toSortedMap(compareByDescending { it })
 
-        // 기존 뷰 제거 후 새로 추가
         binding.dateDetailList.removeAllViews()
 
         for ((date, averageScore) in averageData) {
-            // 클릭 가능한 버튼 생성
             val dateDetailButton = Button(requireContext()).apply {
                 text = "$date\n 양호 수치: ${"%.2f".format(averageScore)}\n 주의 수치: ${"%.2f".format(1.0 - averageScore)}"
                 textSize = 16f
@@ -78,11 +80,61 @@ class DetailFragment : Fragment() {
                     setMargins(16, 16, 16, 16)
                 }
                 setOnClickListener {
-                    // 버튼 클릭 시 할 작업 (추후 상세 정보 보여주기 등 추가 가능)
+                    showDetailsDialog(date, groupedData[date].orEmpty())
                 }
             }
+            binding.dateDetailList.addView(dateDetailButton)
+        }
+    }
 
-            binding.dateDetailList.addView(dateDetailButton) // 버튼 추가
+    private fun showDetailsDialog(date: String, dataList: List<MyEntity>) {
+        // 날짜 형식을 변환 ("2024-11-12" -> "2024년 11월 12일")
+        val formattedDate = try {
+            val originalFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val targetFormat = SimpleDateFormat("yyyy년 MM월 dd일", Locale.getDefault())
+            val parsedDate = originalFormat.parse(date)
+            parsedDate?.let { targetFormat.format(it) } ?: date // 변환에 실패하면 원본 그대로 사용
+        } catch (e: Exception) {
+            date // 예외 발생 시 원본 그대로 사용
+        }
+
+        // AlertDialog 커스텀 뷰 생성
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_photo_details, null)
+        val recyclerView = dialogView.findViewById<RecyclerView>(R.id.recyclerView)
+        recyclerView.layoutManager = LinearLayoutManager(requireContext())
+        recyclerView.adapter = object : RecyclerView.Adapter<PhotoDetailViewHolder>() {
+            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PhotoDetailViewHolder {
+                val view = LayoutInflater.from(parent.context).inflate(R.layout.item_photo_detail, parent, false)
+                return PhotoDetailViewHolder(view)
+            }
+
+            override fun onBindViewHolder(holder: PhotoDetailViewHolder, position: Int) {
+                val entity = dataList[position]
+                holder.bind(entity)
+            }
+
+            override fun getItemCount(): Int = dataList.size
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(formattedDate)
+            .setView(dialogView)
+            .setPositiveButton("확인", null)
+            .show()
+    }
+
+    inner class PhotoDetailViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val imageView: ImageView = itemView.findViewById(R.id.imageView)
+        private val tvGoodScore: TextView = itemView.findViewById(R.id.tvGoodScore)
+        private val tvCautionScore: TextView = itemView.findViewById(R.id.tvCautionScore)
+
+        fun bind(entity: MyEntity) {
+            imageView.setImageURI(Uri.parse(entity.imagePath))
+            val goodProbability = entity.score * 100
+            val cautionProbability = (1 - entity.score) * 100
+
+            tvGoodScore.text = String.format("양호 수치: %.2f%%", goodProbability)
+            tvCautionScore.text = String.format("주의 수치: %.2f%%", cautionProbability)
         }
     }
 

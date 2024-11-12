@@ -145,7 +145,7 @@ class MainFragment : Fragment() {
         // 카메라 버튼 클릭 이벤트 처리
         binding.btnCamera.setOnClickListener {
             Log.d("CameraDebug", "btnSurFace")
-            val photoFile = createImageFile()   // 파일 생성 및 경로 설정
+//            createImageFile() // 빈 파일을 생성하여 curPhotoPath 초기화
             findNavController().navigate(R.id.action_MainFragment_to_CamSfFragment) // 카메라 테스트 Fragment로 이동
         }
         // db테스트 버튼
@@ -188,12 +188,9 @@ class MainFragment : Fragment() {
                                     }
                                 }
 
-                                // 중복 확인 (IO 스레드에서)
-                                val existingPhotoData = withContext(Dispatchers.IO) {
-                                    PhotoDataManager.getAllPhotoData().find { it.photoPath == curPhotoPath }
-                                }
-
-                                if (existingPhotoData != null) {
+                                // 갤러리에서 가져온 경로와 Room에 저장된 경로를 비교
+                                if (database.myDao().isPhotoPathExists(curPhotoPath)) {
+                                    // 중복 경로가 있을 경우 UI 스레드에서 알림을 표시
                                     withContext(Dispatchers.Main) {
                                         Log.d("MainFragment", "이미 존재하는 사진입니다: $curPhotoPath")
                                         Toast.makeText(requireContext(), "이미 존재하는 사진입니다.", Toast.LENGTH_SHORT).show()
@@ -263,6 +260,7 @@ class MainFragment : Fragment() {
         // 권한 요청
         requestPermissions() // 권한 요청 함수 호출
     }
+
     //db에 데이터 삽입
     private fun insertPhoto(date: String, imagePath: String, score: Float) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -364,8 +362,6 @@ class MainFragment : Fragment() {
             }
         }
     }
-
-
 
     // 사진의 EXIF 정보를 사용해 촬영 날짜를 추출하는 함수
     private fun getExifDate(uri: Uri): String {
@@ -599,7 +595,7 @@ class MainFragment : Fragment() {
     // 이미지 파일 생성
     private fun createImageFile(): File {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date()) // 현재 시간으로 파일명 생성
-        val storageDir: File? = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES) // 외부 저장소의 사진 디렉터리 경로
+        val storageDir = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES) // 외부 저장소의 사진 디렉터리 경로
         return File.createTempFile(
             "JPEG_${timestamp}_", // 파일 이름
             ".jpg", // 확장자
@@ -610,16 +606,33 @@ class MainFragment : Fragment() {
     }
 
     // 분석 결과를 보여주는 함수
+//    private fun showAnalysisResult(score: Float) {
+//        val goodProbability = 100 * score
+//        val cautionProbability = 100 * (1 - score)
+//
+//        val resultMessage = String.format(
+//            "두피 점수: %6.0f점",
+//            goodProbability,
+//        )
+//
+//        Toast.makeText(requireContext(), resultMessage, Toast.LENGTH_LONG).show()
+//    }
+
     private fun showAnalysisResult(score: Float) {
         val goodProbability = 100 * score
         val cautionProbability = 100 * (1 - score)
 
         val resultMessage = String.format(
-            "두피 점수: %6.0f점",
+            "두피 건강 상태:\n 양호 확률: %6.2f%%\n 주의 확률: %6.2f%%",
             goodProbability,
+            cautionProbability
         )
 
-        Toast.makeText(requireContext(), resultMessage, Toast.LENGTH_LONG).show()
+        AlertDialog.Builder(requireContext())
+            .setTitle("두피 건강 예측 결과")
+            .setMessage(resultMessage)
+            .setPositiveButton("확인", null)
+            .show()
     }
 
     // onPictureTaken 메서드 수정
@@ -659,10 +672,10 @@ class MainFragment : Fragment() {
                 tfLiteInterpreter!!.run(input_img, prediction)
                 Log.d("CameraApp", "모델 예측 완료")
 
-                if (!::curPhotoPath.isInitialized) {
-                    Log.e("MainFragment", "curPhotoPath가 초기화되지 않았습니다.")
-                    return@withContext 0f
-                }
+//                if (!::curPhotoPath.isInitialized) {
+//                    Log.e("MainFragment", "curPhotoPath가 초기화되지 않았습니다.")
+//                    return@withContext 0f
+//                }
 
                 goodMeasure = (100 * prediction[0][0]).toDouble()
                 cautionMeasure = 100 * (1.0 - prediction[0][0])
@@ -751,7 +764,14 @@ class MainFragment : Fragment() {
             curPhotoPath = absolutePath // 절대 경로로 설정
 
             val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-            val newPhotoData = PhotoData(date = currentDate, photoPath = curPhotoPath, goodMeasurement = goodMeasure, cautionMeasurement = cautionMeasure)
+
+            val newPhotoData = PhotoData(
+                date = currentDate,
+                photoPath = curPhotoPath,
+                goodMeasurement = goodMeasure,
+                cautionMeasurement = cautionMeasure
+            )
+
             PhotoDataManager.addPhotoData(newPhotoData)
             Log.d("MainFragment", "사진 데이터 저장 완료: $newPhotoData")
             Log.d("MainFragment", "curPhotoPath 업데이트 완료: $curPhotoPath")
