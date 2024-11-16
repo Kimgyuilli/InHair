@@ -222,34 +222,34 @@ C:.
 
 | 초기화면 |
 |----------|
-![KakaoTalk_20241112_231326032_01](https://github.com/user-attachments/assets/e096bf01-e36e-48d1-b19f-2a6253e2cb76)
+![main2](images/main2.png)
 
 <br>
 
-![Screenshot_20241112_231624_InHair](https://github.com/user-attachments/assets/98212d23-be9c-46d6-a357-8dee67f89b0b)
+![main](images/main.png)
 
 <br>
 
 
 | 기록 |
 |----------|
-![Screenshot_20241112_231613_InHair](https://github.com/user-attachments/assets/a42cc549-fb67-43f2-97c4-c1b87e45039f)
+![detail](images/detail.png)
 
 <br>
 
-![Screenshot_20241112_231610_InHair (1)](https://github.com/user-attachments/assets/6d9197ee-d0a6-46b0-9174-93cdf4de5907)
+![detail2](images/detail2.png)
 <br>
 
 | 솔루션 |
 |----------|
-![Screenshot_20241112_231618_InHair (1)](https://github.com/user-attachments/assets/55708e25-a470-48b4-a051-82f4dfb14a90)
+![solution](images/solution.png)
 
 <br>
 
 
 | 카메라 |
 |----------|
-![KakaoTalk_20241112_231326032](https://github.com/user-attachments/assets/e33c8b07-b6a2-4284-afb9-2e41d98e2e16)
+![camera](images/camera.png)
 
 <br>
 
